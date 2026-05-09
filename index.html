@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PersonalBuddy – Sign In</title>
-    <meta name="description" content="PersonalBuddy – one place to access all your Buddy apps: DietBuddy and GymBuddy." />
+    <meta
+      name="description"
+      content="PersonalBuddy – one place to access all your Buddy apps: DietBuddy and GymBuddy."
+    />
     <meta name="theme-color" content="#0f1117" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <style>
@@ -133,10 +136,14 @@
         animation: fadeIn 0.3s;
       }
       @media (min-width: 920) {
-        .auth-card { padding: 40px 40px; }
+        .auth-card {
+          padding: 40px 40px;
+        }
       }
       @media (min-width: 640px) {
-        .auth-card { padding: 50px 52px; }
+        .auth-card {
+          padding: 50px 52px;
+        }
       }
       @keyframes fadeIn {
         from {
@@ -200,7 +207,10 @@
         overflow: hidden;
       }
       @media (min-width: 920) {
-        #topbar { gap: 12px; padding: 10px 20px; }
+        #topbar {
+          gap: 12px;
+          padding: 10px 20px;
+        }
       }
       .logo {
         display: flex;
@@ -226,7 +236,9 @@
         max-width: 120px;
       }
       @media (min-width: 920) {
-        .topbar-user { max-width: 200px; }
+        .topbar-user {
+          max-width: 200px;
+        }
       }
 
       /* ── APP CARDS ───────────────────────────────────────────── */
@@ -405,10 +417,21 @@
               </div>
 
               <!-- Lang toggle -->
-              <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: flex-end;
+                  margin-bottom: 12px;
+                "
+              >
                 <button
                   class="btn btn-ghost btn-sm"
-                  style="font-size:0.75rem;font-weight:700;padding:4px 10px;letter-spacing:0.5px"
+                  style="
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    padding: 4px 10px;
+                    letter-spacing: 0.5px;
+                  "
                   @click="$store.pb.setLang($store.pb.lang === 'en' ? 'bg' : 'en')"
                   x-text="$store.pb.lang === 'en' ? 'EN' : 'BG'"
                 ></button>
@@ -423,15 +446,22 @@
 
               <!-- Form -->
               <h2
-                style="font-size:1.1rem;font-weight:700;margin-bottom:4px"
+                style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px"
                 x-text="$store.pb.t('welcome_back')"
               ></h2>
               <p
-                style="color:var(--text3);font-size:0.85rem;margin-bottom:20px"
+                style="
+                  color: var(--text3);
+                  font-size: 0.85rem;
+                  margin-bottom: 20px;
+                "
                 x-text="$store.pb.t('sign_in_desc')"
               ></p>
               <div class="form-group">
-                <label class="form-label" x-text="$store.pb.t('label_email')"></label>
+                <label
+                  class="form-label"
+                  x-text="$store.pb.t('label_email')"
+                ></label>
                 <input
                   type="email"
                   x-model="$store.pb.email"
@@ -440,7 +470,10 @@
                 />
               </div>
               <div class="form-group">
-                <label class="form-label" x-text="$store.pb.t('label_password')"></label>
+                <label
+                  class="form-label"
+                  x-text="$store.pb.t('label_password')"
+                ></label>
                 <input
                   type="password"
                   x-model="$store.pb.password"
@@ -454,8 +487,14 @@
                 @click="$store.pb.login()"
                 :disabled="$store.pb.loading"
               >
-                <span x-show="!$store.pb.loading" x-text="$store.pb.t('btn_sign_in')"></span>
-                <span x-show="$store.pb.loading" x-text="$store.pb.t('btn_signing_in')"></span>
+                <span
+                  x-show="!$store.pb.loading"
+                  x-text="$store.pb.t('btn_sign_in')"
+                ></span>
+                <span
+                  x-show="$store.pb.loading"
+                  x-text="$store.pb.t('btn_signing_in')"
+                ></span>
               </button>
             </div>
           </div>
@@ -482,7 +521,12 @@
             <div style="flex: 1"></div>
             <button
               class="btn btn-ghost btn-sm"
-              style="font-size:0.75rem;font-weight:700;padding:4px 10px;letter-spacing:0.5px"
+              style="
+                font-size: 0.75rem;
+                font-weight: 700;
+                padding: 4px 10px;
+                letter-spacing: 0.5px;
+              "
               @click="$store.pb.setLang($store.pb.lang === 'en' ? 'bg' : 'en')"
               x-text="$store.pb.lang === 'en' ? 'EN' : 'BG'"
             ></button>
@@ -527,7 +571,6 @@
             <a
               class="app-card"
               href="https://splochev.github.io/DietBudy/food-manager.html"
-              target="_blank"
               rel="noopener"
             >
               <div
@@ -549,8 +592,14 @@
                 </svg>
               </div>
               <div>
-                <div class="app-card-title" x-text="$store.pb.t('app_food_title')"></div>
-                <div class="app-card-desc" x-text="$store.pb.t('app_food_desc')"></div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_food_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_food_desc')"
+                ></div>
               </div>
               <div class="app-card-link">
                 <span x-text="$store.pb.t('app_food_link')"></span>
@@ -570,7 +619,6 @@
             <a
               class="app-card"
               href="https://splochev.github.io/DietBudy/planner.html"
-              target="_blank"
               rel="noopener"
             >
               <div
@@ -591,8 +639,14 @@
                 </svg>
               </div>
               <div>
-                <div class="app-card-title" x-text="$store.pb.t('app_planner_title')"></div>
-                <div class="app-card-desc" x-text="$store.pb.t('app_planner_desc')"></div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_planner_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_planner_desc')"
+                ></div>
               </div>
               <div class="app-card-link">
                 <span x-text="$store.pb.t('app_planner_link')"></span>
@@ -612,7 +666,6 @@
             <a
               class="app-card"
               href="https://splochev.github.io/GymBudy/workout.html"
-              target="_blank"
               rel="noopener"
             >
               <div
@@ -633,8 +686,14 @@
                 </svg>
               </div>
               <div>
-                <div class="app-card-title" x-text="$store.pb.t('app_gym_title')"></div>
-                <div class="app-card-desc" x-text="$store.pb.t('app_gym_desc')"></div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_gym_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_gym_desc')"
+                ></div>
               </div>
               <div class="app-card-link" style="color: #818cf8">
                 <span x-text="$store.pb.t('app_gym_link')"></span>
@@ -702,62 +761,69 @@
 
       const translations = {
         en: {
-          welcome_back:       "Welcome back",
-          sign_in_desc:       "Sign in to access your apps",
-          label_email:        "Email",
-          placeholder_email:  "you@example.com",
-          label_password:       "Password",
+          welcome_back: "Welcome back",
+          sign_in_desc: "Sign in to access your apps",
+          label_email: "Email",
+          placeholder_email: "you@example.com",
+          label_password: "Password",
           placeholder_password: "••••••••",
-          btn_sign_in:    "Sign In",
+          btn_sign_in: "Sign In",
           btn_signing_in: "Signing in…",
-          error_fill_fields:        "Please enter your email and password.",
-          error_user_not_found:     "No account found with that email.",
-          error_wrong_password:     "Incorrect password.",
+          error_fill_fields: "Please enter your email and password.",
+          error_user_not_found: "No account found with that email.",
+          error_wrong_password: "Incorrect password.",
           error_invalid_credential: "Invalid email or password.",
-          error_too_many_requests:  "Too many attempts. Try again later.",
-          error_network:   "Network error. Check your connection.",
-          error_generic:   "Sign in failed. Please try again.",
-          sign_out:        "Sign out",
+          error_too_many_requests: "Too many attempts. Try again later.",
+          error_network: "Network error. Check your connection.",
+          error_generic: "Sign in failed. Please try again.",
+          sign_out: "Sign out",
           dashboard_title: "Your Apps",
-          dashboard_desc:  "Everything in one place. Click any app to open it.",
-          app_food_title:  "Food Manager",
-          app_food_desc:   "Browse, add, and manage your food database. Track calories, protein, and pricing per item.",
-          app_food_link:   "Open Food Manager",
+          dashboard_desc: "Everything in one place. Click any app to open it.",
+          app_food_title: "Food Manager",
+          app_food_desc:
+            "Browse, add, and manage your food database. Track calories, protein, and pricing per item.",
+          app_food_link: "Open Food Manager",
           app_planner_title: "Meal Planner",
-          app_planner_desc:  "Plan your daily meals, track macros and costs. Build multi-day plans and generate shopping lists.",
-          app_planner_link:  "Open Meal Planner",
-          app_gym_title:   "Workouts",
-          app_gym_desc:    "Log your training sessions, track exercises and progress. Build and follow workout routines.",
-          app_gym_link:    "Open GymBuddy",
+          app_planner_desc:
+            "Plan your daily meals, track macros and costs. Build multi-day plans and generate shopping lists.",
+          app_planner_link: "Open Meal Planner",
+          app_gym_title: "Workouts",
+          app_gym_desc:
+            "Log your training sessions, track exercises and progress. Build and follow workout routines.",
+          app_gym_link: "Open GymBuddy",
         },
         bg: {
-          welcome_back:       "Добре дошли",
-          sign_in_desc:       "Влезте, за да отворите вашите приложения",
-          label_email:        "Имейл",
-          placeholder_email:  "вие@пример.бг",
-          label_password:       "Парола",
+          welcome_back: "Добре дошли",
+          sign_in_desc: "Влезте, за да отворите вашите приложения",
+          label_email: "Имейл",
+          placeholder_email: "вие@пример.бг",
+          label_password: "Парола",
           placeholder_password: "••••••••",
-          btn_sign_in:    "Вход",
+          btn_sign_in: "Вход",
           btn_signing_in: "Влизане…",
-          error_fill_fields:        "Моля, въведете имейл и парола.",
-          error_user_not_found:     "Няма потребител с този имейл.",
-          error_wrong_password:     "Грешна парола.",
+          error_fill_fields: "Моля, въведете имейл и парола.",
+          error_user_not_found: "Няма потребител с този имейл.",
+          error_wrong_password: "Грешна парола.",
           error_invalid_credential: "Невалиден имейл или парола.",
-          error_too_many_requests:  "Прекалено много опити. Опитайте по-късно.",
-          error_network:   "Мрежова грешка. Проверете връзката.",
-          error_generic:   "Входът не успя. Опитайте отново.",
-          sign_out:        "Изход",
+          error_too_many_requests: "Прекалено много опити. Опитайте по-късно.",
+          error_network: "Мрежова грешка. Проверете връзката.",
+          error_generic: "Входът не успя. Опитайте отново.",
+          sign_out: "Изход",
           dashboard_title: "Вашите приложения",
-          dashboard_desc:  "Всичко на едно място. Натиснете на приложението, за да го отворите.",
-          app_food_title:  "Управление на храни",
-          app_food_desc:   "Прегледайте, добавяйте и управлявайте базата си с храни. Следете калории, белтъци и цени.",
-          app_food_link:   "Отвори управление на храни",
+          dashboard_desc:
+            "Всичко на едно място. Натиснете на приложението, за да го отворите.",
+          app_food_title: "Управление на храни",
+          app_food_desc:
+            "Прегледайте, добавяйте и управлявайте базата си с храни. Следете калории, белтъци и цени.",
+          app_food_link: "Отвори управление на храни",
           app_planner_title: "Планиране на хранене",
-          app_planner_desc:  "Планирайте дневното хранене, следете макрос и разходи. Генерирайте списък за пазаруване.",
-          app_planner_link:  "Отвори планиране на хранене",
-          app_gym_title:   "Тренировки",
-          app_gym_desc:    "Записвайте тренировките си, следете упражнения и прогреса. Създавайте и следвайте рутини.",
-          app_gym_link:    "Отвори GymBuddy",
+          app_planner_desc:
+            "Планирайте дневното хранене, следете макрос и разходи. Генерирайте списък за пазаруване.",
+          app_planner_link: "Отвори планиране на хранене",
+          app_gym_title: "Тренировки",
+          app_gym_desc:
+            "Записвайте тренировките си, следете упражнения и прогреса. Създавайте и следвайте рутини.",
+          app_gym_link: "Отвори GymBuddy",
         },
       };
 
@@ -826,8 +892,8 @@
 
         _friendly(code) {
           const map = {
-            "auth/user-not-found":    this.t("error_user_not_found"),
-            "auth/wrong-password":    this.t("error_wrong_password"),
+            "auth/user-not-found": this.t("error_user_not_found"),
+            "auth/wrong-password": this.t("error_wrong_password"),
             "auth/invalid-credential": this.t("error_invalid_credential"),
             "auth/too-many-requests": this.t("error_too_many_requests"),
             "auth/network-request-failed": this.t("error_network"),
