@@ -518,15 +518,6 @@
               </svg>
               PersonalBuddy
             </div>
-            <a href="https://splochev.github.io/budgetBuddy/budget.html"
-              style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:4px;font-size:0.8rem;font-weight:500;color:var(--text3);text-decoration:none;transition:var(--trans)"
-              onmouseover="this.style.color='var(--text)';this.style.background='var(--surface2)'"
-              onmouseout="this.style.color='var(--text3)';this.style.background='transparent'">
-              <svg style="width:14px;height:14px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="6" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path><circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"></circle>
-              </svg>
-              <span x-text="$store.pb.lang === 'bg' ? 'Бюджет' : 'Budget'"></span>
-            </a>
             <div style="flex: 1"></div>
             <button
               class="btn btn-ghost btn-sm"
@@ -717,6 +708,51 @@
                 </svg>
               </div>
             </a>
+
+            <!-- BudgetBuddy — Budget -->
+            <a
+              class="app-card"
+              href="https://splochev.github.io/budgetBuddy/budget.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(234, 179, 8, 0.12)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#facc15"
+                  stroke-width="2"
+                >
+                  <rect x="2" y="6" width="20" height="14" rx="2"></rect>
+                  <path d="M2 10h20"></path>
+                  <circle cx="16" cy="16" r="1.5" fill="#facc15" stroke="none"></circle>
+                </svg>
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_budget_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_budget_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #facc15">
+                <span x-text="$store.pb.t('app_budget_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
           </div>
         </div>
       </template>
@@ -800,6 +836,10 @@
           app_gym_desc:
             "Log your training sessions, track exercises and progress. Build and follow workout routines.",
           app_gym_link: "Open GymBuddy",
+          app_budget_title: "Budget",
+          app_budget_desc:
+            "Track your income and expenses, manage budgets and categories. Stay on top of your personal finances.",
+          app_budget_link: "Open BudgetBuddy",
         },
         bg: {
           welcome_back: "Добре дошли",
@@ -833,6 +873,10 @@
           app_gym_desc:
             "Записвайте тренировките си, следете упражнения и прогреса. Създавайте и следвайте рутини.",
           app_gym_link: "Отвори GymBuddy",
+          app_budget_title: "Бюджет",
+          app_budget_desc:
+            "Следете приходи и разходи, управлявайте бюджети и категории. Контролирайте личните си финанси.",
+          app_budget_link: "Отвори BudgetBuddy",
         },
       };
 
