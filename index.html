@@ -753,6 +753,52 @@
                 </svg>
               </div>
             </a>
+
+            <!-- Yu-Gi-Oh! — LP Calculator -->
+            <a
+              class="app-card"
+              href="./yu-gi-oh.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(59, 130, 246, 0.12)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#3b82f6"
+                  stroke-width="2"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="M4 4L20 20" />
+                  <path d="M20 4L4 20" />
+                  <circle cx="12" cy="12" r="3" fill="#3b82f6" />
+                </svg>
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_yugioh_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_yugioh_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #3b82f6">
+                <span x-text="$store.pb.t('app_yugioh_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
           </div>
         </div>
       </template>
@@ -840,6 +886,10 @@
           app_budget_desc:
             "Track your income and expenses, manage budgets and categories. Stay on top of your personal finances.",
           app_budget_link: "Open BudgetBuddy",
+          app_yugioh_title: "Yu-Gi-Oh! LP Calculator",
+          app_yugioh_desc:
+            "Track Life Points for your dueling matches. Quick and easy counter for competitive card games.",
+          app_yugioh_link: "Open LP Calculator",
         },
         bg: {
           welcome_back: "Добре дошли",
@@ -854,7 +904,7 @@
           error_user_not_found: "Няма потребител с този имейл.",
           error_wrong_password: "Грешна парола.",
           error_invalid_credential: "Невалиден имейл или парола.",
-          error_too_many_requests: "Прекалено много опити. Опитайте по-късно.",
+          error_too_many_requests: "Прекалено много опити. Опитайте по-същ.",
           error_network: "Мрежова грешка. Проверете връзката.",
           error_generic: "Входът не успя. Опитайте отново.",
           sign_out: "Изход",
@@ -877,6 +927,10 @@
           app_budget_desc:
             "Следете приходи и разходи, управлявайте бюджети и категории. Контролирайте личните си финанси.",
           app_budget_link: "Отвори BudgetBuddy",
+          app_yugioh_title: "Yu-Gi-Oh! LP Калкулатор",
+          app_yugioh_desc:
+            "Следете точки на живот за вашите дуели. Бърз и лесен брояч за състезателни карташни игри.",
+          app_yugioh_link: "Отвори LP Калкулатор",
         },
       };
 
