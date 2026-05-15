@@ -789,6 +789,78 @@
                 </svg>
               </div>
             </a>
+
+            <!-- Card Translator -->
+            <a
+              class="app-card"
+              href="./card-translator.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(234, 179, 8, 0.12)"
+              >
+                <img src="./card-translator.png" alt="Card Translator" style="width: 28px; height: 28px; object-fit: contain;">
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_card_translator_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_card_translator_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #facc15">
+                <span x-text="$store.pb.t('app_card_translator_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
+
+            <!-- Tax Aggregator -->
+            <a
+              class="app-card"
+              href="./tax-aggregator.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(234, 179, 8, 0.12)"
+              >
+                <img src="./tax-aggregator.png" alt="Tax Aggregator" style="width: 28px; height: 28px; object-fit: contain;">
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_tax_aggregator_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_tax_aggregator_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #facc15">
+                <span x-text="$store.pb.t('app_tax_aggregator_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
           </div>
         </div>
       </template>
@@ -880,6 +952,14 @@
           app_yugioh_desc:
             "Track Life Points for your dueling matches. Quick and easy counter for competitive card games.",
           app_yugioh_link: "Open LP Calculator",
+          app_card_translator_title: "Card Translator",
+          app_card_translator_desc:
+            "Upload images, write text under each, and generate a PDF for printing.",
+          app_card_translator_link: "Open Card Translator",
+          app_tax_aggregator_title: "Tax Aggregator",
+          app_tax_aggregator_desc:
+            "Process Trading 212 CSV files and generate tax reports for Bulgarian NAP.",
+          app_tax_aggregator_link: "Open Tax Aggregator",
         },
         bg: {
           welcome_back: "Добре дошли",
@@ -921,9 +1001,17 @@
           app_yugioh_desc:
             "Следете точки на живот за вашите дуели. Бърз и лесен брояч за състезателни карташни игри.",
           app_yugioh_link: "Отвори LP Калкулатор",
+          app_card_translator_title: "Превод на карти",
+          app_card_translator_desc:
+            "Качете изображения, напишете текст под всяко и генерирайте PDF за отпечатване.",
+          app_card_translator_link: "Отвори превод на карти",
+          app_tax_aggregator_title: "Агрегатор на данъци",
+          app_tax_aggregator_desc:
+            "Обработвайте CSV файлове от Trading 212 и генерирайте данъчни отчети за български НАП.",
+          app_tax_aggregator_link: "Отвори агрегатор на данъци",
         },
       };
-
+      
       Alpine.store("pb", {
         authState: "loading", // loading | unauthenticated | authenticated
         user: null,

@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>НАП Данъчен Агрегатор — Trading 212</title>
+    <link rel="icon" type="image/svg+xml" href="./tax-aggregator.png" />
+    <style>
+      /* ── DESIGN TOKENS (from PersonalBuddy) ─────────────────────────── */
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --surface2: #252833;
+        --surface3: #2f3342;
+        --border: #353849;
+        --text: #e8eaf0;
+        --text2: #9ca3b8;
+        --text3: #6b7280;
+        --accent: #22c55e;
+        --accent-h: #16a34a;
+        --accent-bg: rgba(34, 197, 94, 0.1);
+        --danger: #ef4444;
+        --green: #22c55e;
+        --red: #ef4444;
+        --yellow: #fbbf24;
+        --cyan: #22d3ee;
+        --radius: 10px;
+        --radius-sm: 6px;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+        --trans: all 0.2s ease;
+      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { font-size: 14px; }
+      body {
+        font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        min-height: 100vh;
+        padding: 0 0 80px;
+      }
+
+      /* ── TOPBAR ──────────────────────────────────────────────────────── */
+      #topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 20px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: -0.4px;
+      }
+      .logo svg { width: 22px; height: 22px; }
+      .topbar-subtitle {
+        font-size: 0.75rem;
+        color: var(--text3);
+        margin-left: 4px;
+      }
+
+      /* ── PAGE BODY ───────────────────────────────────────────────────── */
+      .page-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 28px 20px;
+      }
+
+      /* ── UPLOAD ZONE ─────────────────────────────────────────────────── */
+      .upload-zone {
+        border: 1.5px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 36px 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--trans);
+        margin-bottom: 24px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+      .upload-zone:hover { border-color: var(--accent); background: var(--surface2); }
+      .upload-zone.dragging { border-color: var(--accent); background: var(--accent-bg); }
+      .upload-zone input { display: none; }
+      .upload-icon { font-size: 30px; margin-bottom: 10px; }
+      .upload-label { font-size: 0.875rem; color: var(--text2); }
+      .upload-label strong { color: var(--accent); }
+      .upload-hint { margin-top: 4px; font-size: 0.75rem; color: var(--text3); }
+      .file-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 5px 14px;
+        background: var(--accent-bg);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        border-radius: 20px;
+        font-size: 0.75rem;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      /* ── SUMMARY CARDS ───────────────────────────────────────────────── */
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+      }
+      .card-label {
+        font-size: 0.6875rem;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .card-value { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.5px; }
+      .card-value.pos { color: var(--green); }
+      .card-value.neg { color: var(--red); }
+      .card-value.neu { color: var(--cyan); }
+      .card-sub { font-size: 0.6875rem; color: var(--text3); margin-top: 4px; }
+
+      /* ── TABS ────────────────────────────────────────────────────────── */
+      .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+      .tab-btn {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text2);
+        padding: 7px 16px;
+        border-radius: var(--radius-sm);
+        font-size: 0.8125rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--trans);
+        font-weight: 600;
+      }
+      .tab-btn:hover { background: var(--surface2); color: var(--text); }
+      .tab-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; }
+
+      /* ── SECTIONS ────────────────────────────────────────────────────── */
+      .section { margin-bottom: 32px; }
+      .section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .section-badge {
+        background: var(--accent-bg);
+        color: var(--accent);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        font-size: 0.625rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: none;
+      }
+
+      /* ── YEAR BLOCK ──────────────────────────────────────────────────── */
+      .year-block { margin-bottom: 40px; }
+      .year-header {
+        font-size: 1.375rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 20px;
+        letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .year-header::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      /* ── TABLES ──────────────────────────────────────────────────────── */
+      .table-wrap {
+        overflow-x: auto;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+      table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+      thead th {
+        background: var(--surface2);
+        color: var(--text3);
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-weight: 600;
+        padding: 10px 12px;
+        text-align: right;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        cursor: pointer;
+        transition: var(--trans);
+      }
+      thead th:hover { color: var(--text); }
+      thead th.left { text-align: left; }
+      tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+      tbody tr:last-child { border-bottom: none; }
+      tbody tr:hover td { background: var(--surface2); }
+      tbody td {
+        padding: 9px 12px;
+        text-align: right;
+        background: var(--surface);
+        font-size: 0.75rem;
+        white-space: nowrap;
+        color: var(--text2);
+      }
+      tbody td.left { text-align: left; font-family: inherit; color: var(--text); }
+      tbody td.ticker {
+        font-weight: 700;
+        color: var(--accent);
+        text-align: left;
+      }
+      .total-row td {
+        background: var(--surface2) !important;
+        font-weight: 700;
+        color: var(--text);
+        border-top: 2px solid var(--border);
+      }
+      .profit-val { color: var(--green); }
+      .loss-val   { color: var(--red); }
+      .zero-val   { color: var(--text3); }
+      .highlight td { background: rgba(239, 68, 68, 0.04) !important; }
+
+      /* ── RAW TAB CONTROLS ────────────────────────────────────────────── */
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .search-input {
+        flex: 1; min-width: 200px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 7px 12px;
+        color: var(--text);
+        font-size: 0.8125rem;
+        font-family: inherit;
+        outline: none;
+        transition: var(--trans);
+      }
+      .search-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+      }
+      select.filter-sel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 7px 10px;
+        color: var(--text);
+        font-size: 0.8125rem;
+        font-family: inherit;
+        outline: none;
+        transition: var(--trans);
+        cursor: pointer;
+      }
+      select.filter-sel:focus { border-color: var(--accent); }
+
+      /* ── BUTTONS ─────────────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 0.8125rem;
+        font-family: inherit;
+        cursor: pointer;
+        border: none;
+        transition: var(--trans);
+        white-space: nowrap;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-primary:hover { background: var(--accent-h); }
+      .btn-ghost {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text2);
+      }
+      .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+      .row-count { font-size: 0.75rem; color: var(--text3); }
+
+      /* ── WARNING BANNER ──────────────────────────────────────────────── */
+      .warn {
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.25);
+        border-radius: var(--radius-sm);
+        padding: 12px 16px;
+        font-size: 0.8125rem;
+        color: var(--yellow);
+        margin-bottom: 16px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      /* ── EMPTY STATES ────────────────────────────────────────────────── */
+      .empty-text { color: var(--text3); font-size: 0.8125rem; padding: 14px 0; }
+      #results { display: none; }
+
+      /* ── SCROLL TO TOP ───────────────────────────────────────────────── */
+      .scroll-top-btn {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 40px;
+        height: 40px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(34, 197, 94, 0.4);
+        z-index: 1000;
+        transition: var(--trans);
+      }
+      .scroll-top-btn:hover { background: var(--accent-h); transform: translateY(-2px); }
+      .scroll-top-btn.show { display: flex; }
+
+      /* ── DETAIL SUMMARY ──────────────────────────────────────────────── */
+      details summary { cursor: pointer; color: var(--text3); font-size: 0.75rem; }
+      details[open] summary { color: var(--text2); }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: none; }
+      }
+      #results { animation: fadeIn 0.25s ease; }
+    </style>
+  </head>
+  <body>
+
+    <!-- ══ TOPBAR ══════════════════════════════════════════════════════════ -->
+    <header style="padding: 24px 16px; border-bottom: 1px solid var(--border)">
+      <div style="max-width: 1200px; margin: 0 auto">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+          "
+        >
+          <div class="logo">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+              <path d="M7 8h2v5H7zM11 6h2v7h-2zM15 10h2v3h-2z" />
+            </svg>
+            <div
+              style="display: flex; flex-direction: row; line-height: 1.1; gap: 16px; align-items: baseline;">
+              <p>
+                НАП Агрегатор
+              </p>
+              <p class="topbar-subtitle">Trading 212 CSV → Приложения към чл. 50 (EUR)</p>
+            </div>
+          </div>
+          <a
+            href="index.html"
+            class="btn btn-ghost"
+            style="text-decoration: none"
+          >
+            <svg
+              style="width: 16px; height: 16px"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 12h18M3 12l9-9m-9 9l9 9" />
+            </svg>
+            Back to Home
+          </a>
+        </div>
+      </div>
+    </header>
+
+
+    <!-- ══ PAGE ════════════════════════════════════════════════════════════ -->
+    <div class="page-inner">
+
+      <!-- Upload zone -->
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".csv" multiple />
+        <div class="upload-icon">📂</div>
+        <div class="upload-label"><strong>Качи CSV</strong> от Trading 212 (или плъзни тук)</div>
+        <div class="upload-hint">Поддържа множество файлове</div>
+        <div id="fileBadge" style="display:none" class="file-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span id="fileNames"></span>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results">
+
+        <!-- Summary cards -->
+        <div class="cards" id="summaryCards"></div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('tax')">📋 Данъчни таблици</button>
+          <button class="tab-btn" onclick="switchTab('raw')">🔍 Суров CSV</button>
+        </div>
+
+        <!-- Tax tab -->
+        <div class="tab-panel active" id="tab-tax">
+          <div id="taxOutput"></div>
+        </div>
+
+        <!-- Raw CSV tab -->
+        <div class="tab-panel" id="tab-raw">
+          <div class="controls">
+            <input class="search-input" id="csvSearch" placeholder="Търси тикер, ISIN…" oninput="renderCsvTable()" />
+            <select class="filter-sel" id="actionFilter" onchange="renderCsvTable()">
+              <option value="">Всички операции</option>
+              <option value="Market buy">Покупки</option>
+              <option value="Market sell">Продажби</option>
+              <option value="Stop sell">Stop sell</option>
+            </select>
+            <button class="btn btn-primary" id="exportCsvBtn">📥 Експорт CSV</button>
+            <span class="row-count" id="rowCount"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="csvTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /results -->
+    </div><!-- /page-inner -->
+
+    <button class="scroll-top-btn" id="scrollTopBtn" title="Към началото">↑</button>
+
+    <script>
+    // ── Constants ──────────────────────────────────────────────────────────
+    const EURO_TO_BGN = 1.95583;
+    const DEBUG = false;
+
+    // ── DOM refs ───────────────────────────────────────────────────────────
+    const fileInput    = document.getElementById('fileInput');
+    const uploadZone   = document.getElementById('uploadZone');
+    const results      = document.getElementById('results');
+    const summaryCards = document.getElementById('summaryCards');
+    const taxOutput    = document.getElementById('taxOutput');
+
+    // ── Upload zone ────────────────────────────────────────────────────────
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragging'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault(); uploadZone.classList.remove('dragging');
+      fileInput.files = e.dataTransfer.files;
+      processFiles(Array.from(e.dataTransfer.files));
+    });
+    fileInput.addEventListener('change', e => processFiles(Array.from(e.target.files)));
+
+    document.getElementById('scrollTopBtn').addEventListener('click', () =>
+      window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.addEventListener('scroll', () =>
+      document.getElementById('scrollTopBtn').classList.toggle('show', window.scrollY > 300));
+
+    // ── Main entry point ───────────────────────────────────────────────────
+    async function processFiles(files) {
+      if (!files.length) return;
+      document.getElementById('fileNames').textContent = files.map(f => f.name).join(', ');
+      document.getElementById('fileBadge').style.display = 'inline-flex';
+
+      let header = null, data = [];
+      for (const f of files) {
+        const txt = await f.text();
+        const rows = parseCSV(txt);
+        if (!header) header = rows[0];
+        data = data.concat(rows.slice(1));
+      }
+
+      const timeIdx = header.indexOf('Time');
+      if (timeIdx >= 0) {
+        data.sort((a, b) =>
+          new Date(a[timeIdx]?.replace(' ', 'T') || '') -
+          new Date(b[timeIdx]?.replace(' ', 'T') || ''));
+      }
+
+      const idx = name => header.indexOf(name);
+
+      const dailyUsdRate = {};
+      data.forEach(r => {
+        const cur = (r[idx('Currency (Price / share)')] || '').trim();
+        const totalCur = (r[idx('Currency (Total)')] || '').trim();
+        const exRate = parseFloat((r[idx('Exchange rate')] || '1').replace(',', '.'));
+        const t = r[idx('Time')] || '';
+        const day = t.split(' ')[0];
+        if (!day) return;
+        if (cur === 'USD' && totalCur === 'EUR' && exRate && exRate > 0.5 && exRate < 5) {
+          dailyUsdRate[day] = exRate;
+        }
+      });
+
+      const rateEntries = Object.entries(dailyUsdRate)
+        .map(([d, r]) => [new Date(d).getTime(), r])
+        .sort((a, b) => a[0] - b[0]);
+
+      function getNearestUsdRate(dateStr) {
+        if (!rateEntries.length) return 1.10;
+        const t = new Date(dateStr).getTime();
+        let best = rateEntries[0][1];
+        let bestDist = Math.abs(t - rateEntries[0][0]);
+        for (const [ts, rate] of rateEntries) {
+          const dist = Math.abs(t - ts);
+          if (dist < bestDist) { bestDist = dist; best = rate; }
+        }
+        return best;
+      }
+
+      const dailyGbpRate = {};
+      data.forEach(r => {
+        const cur = (r[idx('Currency (Price / share)')] || '').trim();
+        const totalCur = (r[idx('Currency (Total)')] || '').trim();
+        const exRate = parseFloat((r[idx('Exchange rate')] || '1').replace(',', '.'));
+        const t = r[idx('Time')] || '';
+        const day = t.split(' ')[0];
+        if (!day) return;
+        if ((cur === 'GBX' || cur === 'GBP') && totalCur === 'EUR' && exRate > 50 && exRate < 200) {
+          dailyGbpRate[day] = exRate;
+        }
+      });
+      const gbpRateEntries = Object.entries(dailyGbpRate)
+        .map(([d, r]) => [new Date(d).getTime(), r])
+        .sort((a, b) => a[0] - b[0]);
+      function getNearestGbpRate(dateStr, isGBX) {
+        const fallback = isGBX ? 86 : 0.86;
+        if (!gbpRateEntries.length) return fallback;
+        const t = new Date(dateStr).getTime();
+        let best = gbpRateEntries[0][1]; let bestDist = Math.abs(t - gbpRateEntries[0][0]);
+        for (const [ts, rate] of gbpRateEntries) {
+          const dist = Math.abs(t - ts);
+          if (dist < bestDist) { bestDist = dist; best = rate; }
+        }
+        return best;
+      }
+
+      const conversionWarnings = [];
+
+      const toEUR = (amount, cur, exRate, day) => {
+        if (cur === 'EUR') return amount;
+        if (cur === 'BGN') return amount / EURO_TO_BGN;
+        if (cur === 'USD') {
+          const rate = (exRate > 0.5 && exRate < 5 && exRate !== 1.0)
+            ? exRate : getNearestUsdRate(day);
+          return amount / rate;
+        }
+        if (cur === 'GBP') {
+          const gbxRate = getNearestGbpRate(day, true);
+          return amount * 100 / gbxRate;
+        }
+        return amount;
+      };
+
+      const app5ByYear = {};
+      const app8ByYear = {};
+      const byTicker   = {};
+
+      const ensure = (y, t) => {
+        app5ByYear[y] = app5ByYear[y] || {};
+        app5ByYear[y][t] = app5ByYear[y][t] || { sellEUR: 0, buyEUR: 0 };
+        app8ByYear[y] = app8ByYear[y] || [];
+      };
+
+      data.forEach(row => {
+        const act = row[idx('Action')]; if (act !== 'Market sell' && act !== 'Stop sell') return;
+        const ticker = row[idx('Ticker')]; if (!ticker) return;
+        const time   = row[idx('Time')] || '';
+        const day    = time.split(' ')[0];
+        const year   = new Date(time.replace(' ','T')).getFullYear();
+
+        const totalRaw  = parseFloat((row[idx('Total')]  || '0').replace(',','.')) || 0;
+        const totalCur  = (row[idx('Currency (Total)')] || row[idx('Currency (Price / share)')] || '').trim();
+        const resultRaw = parseFloat((row[idx('Result')] || '0').replace(',','.')) || 0;
+        const resultCur = (row[idx('Currency (Result)')] || totalCur).trim();
+        const exRate    = parseFloat((row[idx('Exchange rate')] || '1').replace(',','.')) || 1;
+
+        const sellEUR   = toEUR(totalRaw,  totalCur,  exRate, day);
+        const resultEUR = toEUR(resultRaw, resultCur, exRate, day);
+        const buyEUR    = sellEUR - resultEUR;
+
+        ensure(year, ticker);
+        app5ByYear[year][ticker].sellEUR += sellEUR;
+        app5ByYear[year][ticker].buyEUR  += buyEUR;
+
+        if (!byTicker[ticker]) byTicker[ticker] = { name: row[idx('Name')] || ticker };
+      });
+
+      const holdingsTracker = {};
+      const tradeRows = data.filter(r => {
+        const a = r[idx('Action')];
+        return a === 'Market buy' || a === 'Market sell' || a === 'Stop sell';
+      });
+
+      let curSnapYear = null;
+      const snapshots = {};
+
+      const takeSnapshot = (year) => {
+        snapshots[year] = {};
+        Object.entries(holdingsTracker).forEach(([ticker, obj]) => {
+          let sh = 0, eur = 0, first = '';
+          obj.queue.forEach((b, i) => {
+            sh  += b.rem;
+            eur += b.unitEUR * b.rem;
+            if (i === 0) first = b.time;
+          });
+          if (sh > 1e-4) {
+            snapshots[year][ticker] = { name: obj.name, shares: sh, totalEUR: eur, firstDate: first };
+          }
+        });
+      };
+
+      tradeRows.forEach(row => {
+        const action = row[idx('Action')];
+        const ticker = row[idx('Ticker')]; if (!ticker) return;
+        const time   = row[idx('Time')] || '';
+        const day    = time.split(' ')[0];
+        const year   = new Date(time.replace(' ','T')).getFullYear();
+
+        if (curSnapYear !== null && year > curSnapYear) {
+          for (let y = curSnapYear; y < year; y++) takeSnapshot(y);
+        }
+        curSnapYear = year;
+
+        const totalRaw = parseFloat((row[idx('Total')]  || '0').replace(',','.')) || 0;
+        const totalCur = (row[idx('Currency (Total)')] || row[idx('Currency (Price / share)')] || '').trim();
+        const exRate   = parseFloat((row[idx('Exchange rate')] || '1').replace(',','.')) || 1;
+        const shares   = parseFloat((row[idx('No. of shares')] || '0').replace(',','.')) || 0;
+        const totalEUR = toEUR(totalRaw, totalCur, exRate, day);
+
+        if (!holdingsTracker[ticker]) holdingsTracker[ticker] = { name: row[idx('Name')] || ticker, queue: [] };
+
+        if (action === 'Market buy') {
+          holdingsTracker[ticker].queue.push({
+            rem: shares, unitEUR: shares ? totalEUR / shares : 0, time
+          });
+        } else {
+          let rem = shares;
+          const q = holdingsTracker[ticker].queue;
+          while (rem > 1e-4 && q.length > 0) {
+            const b = q[0];
+            const used = Math.min(b.rem, rem);
+            b.rem -= used; rem -= used;
+            if (b.rem < 1e-4) q.shift();
+          }
+        }
+      });
+
+      if (curSnapYear !== null) takeSnapshot(curSnapYear);
+
+      const lastDateInFile = tradeRows.length
+        ? new Date(tradeRows[tradeRows.length-1][idx('Time')].replace(' ','T'))
+        : new Date();
+      const lastDateStr = lastDateInFile.toLocaleDateString('bg-BG');
+
+      Object.entries(snapshots).forEach(([yearStr, tickers]) => {
+        const y = parseInt(yearStr);
+        app8ByYear[y] = app8ByYear[y] || [];
+        Object.entries(tickers).forEach(([ticker, d]) => {
+          app8ByYear[y].push({
+            ticker, name: d.name, shares: d.shares, firstDate: d.firstDate,
+            totalEUR: d.totalEUR
+          });
+        });
+      });
+
+      const years = Array.from(new Set([
+        ...Object.keys(app5ByYear),
+        ...Object.keys(app8ByYear)
+      ])).map(Number).sort();
+
+      let totalSellEUR = 0, totalBuyEUR = 0, totalHoldingsEUR = 0;
+      years.forEach(y => {
+        Object.values(app5ByYear[y] || {}).forEach(t => {
+          totalSellEUR += t.sellEUR;
+          totalBuyEUR  += t.buyEUR;
+        });
+        (app8ByYear[y] || []).forEach(h => { totalHoldingsEUR += h.totalEUR; });
+      });
+      const netProfitEUR = totalSellEUR - totalBuyEUR;
+
+      const latestYear = years[years.length - 1] || new Date().getFullYear();
+      let yearSell = 0, yearBuy = 0;
+      Object.values(app5ByYear[latestYear] || {}).forEach(t => {
+        yearSell += t.sellEUR; yearBuy += t.buyEUR;
+      });
+      const yearProfit = yearSell - yearBuy;
+
+      summaryCards.innerHTML = [
+        { label: `Нетна печалба ${latestYear}`, val: eur(yearProfit), cls: yearProfit >= 0 ? 'pos' : 'neg' },
+        { label: `Продажни цени ${latestYear}`, val: eur(yearSell), cls: 'neu' },
+        { label: `Покупни цени ${latestYear}`,  val: eur(yearBuy),  cls: 'neu' },
+        { label: 'Данък 10% (прибл.)', val: eur(Math.max(yearProfit, 0) * 0.1), cls: yearProfit > 0 ? 'pos' : 'zero-val' },
+      ].map(c => `
+        <div class="card">
+          <div class="card-label">${c.label}</div>
+          <div class="card-value ${c.cls}">${c.val}</div>
+        </div>`).join('');
+
+      let html = '';
+      if (conversionWarnings.length > 0) {
+        html += `<div class="warn">⚠️ ${conversionWarnings.length} USD транзакции нямат exchange rate в CSV — използван е най-близкият наличен курс по дата.</div>`;
+      }
+
+      years.forEach(y => {
+        html += `<div class="year-block"><div class="year-header">${y}</div>`;
+
+        // Приложение 8
+        const holdings = app8ByYear[y] || [];
+        html += `
+          <div class="section">
+            <div class="section-title">Приложение 8 — Акции към ${lastDateStr} <span class="section-badge">чл. 8</span></div>
+            ${holdings.length === 0 ? '<p class="empty-text">Няма налични позиции в края на годината.</p>' : `
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="left">#</th>
+                    <th class="left">Вид</th>
+                    <th class="left">Емитент / Тикер</th>
+                    <th>Брой акции</th>
+                    <th>Дата на придобиване</th>
+                    <th>Обща цена EUR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${holdings.map((s, i) => {
+                    const fd = s.firstDate ? s.firstDate.split(' ')[0].split('-').reverse().join('.') : '—';
+                    return `<tr>
+                      <td class="left">${i + 1}</td>
+                      <td class="left">Акции</td>
+                      <td class="ticker">${s.ticker}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${s.name}</span></td>
+                      <td>${s.shares.toFixed(8)}</td>
+                      <td>${fd}</td>
+                      <td>${eur(s.totalEUR)}</td>
+                    </tr>`;
+                  }).join('')}
+                  <tr class="total-row">
+                    <td colspan="5" class="left">Общо</td>
+                    <td>${eur(holdings.reduce((s, h) => s + h.totalEUR, 0))}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>`}
+          </div>`;
+
+        // Приложение 5
+        const tickers5 = Object.entries(app5ByYear[y] || {});
+        let totSell = 0, totBuy = 0;
+        tickers5.forEach(([, t]) => { totSell += t.sellEUR; totBuy += t.buyEUR; });
+        const totProfit = Math.max(totSell - totBuy, 0);
+        const totLoss   = Math.max(totBuy - totSell, 0);
+
+        html += `
+          <div class="section">
+            <div class="section-title">Приложение 5 — Реализирани печалби и загуби <span class="section-badge">чл. 5</span></div>
+            ${tickers5.length === 0 ? '<p class="empty-text">Няма продадени позиции.</p>' : `
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="left">#</th>
+                    <th class="left">Код (Тикер)</th>
+                    <th>Продажна цена EUR</th>
+                    <th>Цена на придобиване EUR</th>
+                    <th>Печалба EUR</th>
+                    <th>Загуба EUR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tickers5.map(([tick, t], i) => {
+                    const profit = Math.max(t.sellEUR - t.buyEUR, 0);
+                    const loss   = Math.max(t.buyEUR - t.sellEUR, 0);
+                    return `<tr>
+                      <td class="left">${i + 1}</td>
+                      <td class="ticker">${tick}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${(byTicker[tick]?.name || '')}</span></td>
+                      <td>${eur(t.sellEUR)}</td>
+                      <td>${eur(t.buyEUR)}</td>
+                      <td class="${profit > 0 ? 'profit-val' : 'zero-val'}">${profit > 0 ? eur(profit) : '—'}</td>
+                      <td class="${loss > 0 ? 'loss-val' : 'zero-val'}">${loss > 0 ? eur(loss) : '—'}</td>
+                    </tr>`;
+                  }).join('')}
+                  <tr class="total-row">
+                    <td colspan="2" class="left">Общо</td>
+                    <td><strong>${eur(totSell)}</strong></td>
+                    <td><strong>${eur(totBuy)}</strong></td>
+                    <td class="${totProfit > 0 ? 'profit-val' : 'zero-val'}"><strong>${totProfit > 0 ? eur(totProfit) : '—'}</strong></td>
+                    <td class="${totLoss > 0 ? 'loss-val' : 'zero-val'}"><strong>${totLoss > 0 ? eur(totLoss) : '—'}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>`}
+          </div>`;
+
+        html += '</div>'; // year-block
+      });
+
+      taxOutput.innerHTML = html;
+      results.style.display = 'block';
+      setupCsvTable(header, data);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function eur(v) {
+      return (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2) + ' €';
+    }
+
+    // ── CSV Table ──────────────────────────────────────────────────────────
+    let csvHeader = [], csvData = [], lastFiltered = [];
+    let sortCol = -1, sortDir = 'asc';
+
+    function setupCsvTable(header, data) {
+      csvHeader = header;
+      csvData = data.filter(r => r.some(c => c.trim() !== ''));
+      renderCsvTable();
+    }
+
+    function renderCsvTable() {
+      const search     = (document.getElementById('csvSearch')?.value || '').toLowerCase();
+      const actFilter  = document.getElementById('actionFilter')?.value || '';
+      const actionIdx  = csvHeader.indexOf('Action');
+      let filtered = csvData.filter(row => {
+        const action = row[actionIdx];
+        if (action !== 'Market buy' && action !== 'Market sell' && action !== 'Stop sell') return false;
+        if (actFilter && action !== actFilter) return false;
+        if (search) return row.some(c => c.toLowerCase().includes(search));
+        return true;
+      });
+      if (sortCol >= 0) {
+        filtered.sort((a, b) => {
+          let va = a[sortCol] || '', vb = b[sortCol] || '';
+          const dr = /^\d{4}-\d{2}-\d{2}/;
+          if (dr.test(va) && dr.test(vb)) {
+            const da = new Date(va.replace(' ', 'T')), db = new Date(vb.replace(' ', 'T'));
+            if (!isNaN(da)) return sortDir === 'asc' ? da - db : db - da;
+          }
+          const na = parseFloat(va), nb = parseFloat(vb);
+          if (!isNaN(na) && !isNaN(nb)) return sortDir === 'asc' ? na - nb : nb - na;
+          return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+      }
+      lastFiltered = filtered;
+
+      const thead = document.querySelector('#csvTable thead');
+      const tbody = document.querySelector('#csvTable tbody');
+      thead.innerHTML = '<tr>' + csvHeader.map((h, i) =>
+        `<th class="${i <= 4 ? 'left' : ''}" onclick="sortBy(${i})">${h} ${sortCol === i ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>`
+      ).join('') + '</tr>';
+      tbody.innerHTML = filtered.map(row =>
+        `<tr class="${row[actionIdx] === 'Market sell' ? 'highlight' : ''}">` +
+        row.map((c, i) => `<td class="${i <= 4 ? 'left' : ''}">${c}</td>`).join('') + '</tr>'
+      ).join('');
+      document.getElementById('rowCount').textContent =
+        `Показани: ${filtered.length} от ${csvData.length}`;
+    }
+
+    function sortBy(col) {
+      if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortCol = col; sortDir = 'asc'; }
+      renderCsvTable();
+    }
+
+    document.getElementById('exportCsvBtn').onclick = () => {
+      if (!lastFiltered.length) { alert('Няма данни'); return; }
+      const esc = s => { const str = String(s || ''); return str.includes(',') || str.includes('"') ? '"' + str.replace(/"/g, '""') + '"' : str; };
+      const csv = [csvHeader, ...lastFiltered].map(r => r.map(esc).join(',')).join('\n');
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })),
+        download: `export_${new Date().toISOString().slice(0,10)}.csv`
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+
+    // ── Tab switching ──────────────────────────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) =>
+        b.classList.toggle('active', ['tax','raw'][i] === name));
+      document.querySelectorAll('.tab-panel').forEach(p =>
+        p.classList.toggle('active', p.id === 'tab-' + name));
+    }
+
+    // ── CSV Parser ─────────────────────────────────────────────────────────
+    function parseCSV(text) {
+      const rows = []; let cur = [], val = '', inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i], n = text[i+1];
+        if (c === '"' && inQ && n === '"') { val += '"'; i++; }
+        else if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { cur.push(val); val = ''; }
+        else if (c === '\n' && !inQ) { cur.push(val); rows.push(cur); cur = []; val = ''; }
+        else { val += c; }
+      }
+      cur.push(val); rows.push(cur);
+      return rows;
+    }
+    </script>
+  </body>
+</html>
