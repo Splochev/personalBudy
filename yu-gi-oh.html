@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=landscape, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Yu-Gi-Oh! LP Calculator</title>
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -433,6 +433,7 @@
     }
 
     /* ── RESPONSIVE ── */
+    /* Tablet & smaller desktop */
     @media (max-width: 1024px) {
       .players-row, .tools-row { grid-template-columns: 1fr 1fr; }
       .main { padding: 12px 12px; }
@@ -442,7 +443,34 @@
       .btn-newgame { padding: 5px 10px; font-size: 0.7rem; }
       .go-box { padding: 24px 20px; }
     }
-    @media (max-height: 500px), (orientation: landscape) {
+    
+    /* Portrait/Vertical mode on mobile */
+    @media (orientation: portrait) and (max-width: 768px) {
+      html { font-size: 14px; }
+      .main { padding: 14px 12px; }
+      .header { padding: 10px 14px; }
+      .players-row, .tools-row { grid-template-columns: 1fr; gap: 12px; }
+      .lp-number { font-size: 3.2rem; }
+      .player-body { padding: 12px 14px; }
+      .lp-display { padding: 14px 10px 10px; }
+      .lp-label { font-size: 0.6rem; margin-top: 4px; }
+      .lp-input { font-size: 1rem; padding: 8px 8px; }
+      .btn-lp { padding: 8px 12px; font-size: 0.95rem; }
+      .quick-btns { gap: 5px; margin-top: 8px; }
+      .qbtn { padding: 4px 8px; font-size: 0.7rem; }
+      .lp-history { max-height: 90px; margin-top: 10px; padding-top: 8px; }
+      .tool-card { padding: 12px 14px; }
+      .coins-area { min-height: 100px; gap: 16px; }
+      .coin-scene { width: 70px; height: 70px; }
+      .coin { width: 70px; height: 70px; }
+      .dice-area { min-height: 100px; gap: 12px; }
+      .dice-scene { width: 64px; height: 64px; }
+      .dice-cube { width: 64px; height: 64px; }
+      .dice-face { width: 64px; height: 64px; border-radius: 10px; }
+    }
+    
+    /* Landscape mode - optimized for horizontal viewing */
+    @media (orientation: landscape) {
       html { font-size: 13px; }
       .header { padding: 8px 12px; }
       .header-title { font-size: 0.85rem; }
