@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=landscape, viewport-fit=cover">
   <title>Yu-Gi-Oh! LP Calculator</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Yu-Gi-Oh! LP Calculator" />
+  <link rel="apple-touch-icon" href="./favicon.svg" />
+  <link rel="manifest" href="./manifest.ygo.json" />
   <link rel="icon" type="image/x-icon" href="./logo.png" />
   <style>
     :root {
@@ -427,20 +433,42 @@
     }
 
     /* ── RESPONSIVE ── */
-    @media (max-width: 680px) {
-      .players-row, .tools-row { grid-template-columns: 1fr; }
-      .lp-number { font-size: 3rem; }
-      .go-box { padding: 32px 28px; }
-      /* On mobile: fix the header so it can slide away on scroll */
-      .header {
-        position: fixed;
-        top: 0; left: 0; right: 0;
-        z-index: 10;
-        transition: transform 0.3s ease;
-      }
-      .header.hidden { transform: translateY(-110%); }
-      /* Offset content below the fixed header (~49px tall) */
-      .main { padding-top: 58px; }
+    @media (max-width: 1024px) {
+      .players-row, .tools-row { grid-template-columns: 1fr 1fr; }
+      .main { padding: 12px 12px; }
+      .header { padding: 10px 14px; }
+      .header-title { font-size: 0.9rem; }
+      .lp-number { font-size: 2.5rem; }
+      .btn-newgame { padding: 5px 10px; font-size: 0.7rem; }
+      .go-box { padding: 24px 20px; }
+    }
+    @media (max-height: 500px), (orientation: landscape) {
+      html { font-size: 13px; }
+      .header { padding: 8px 12px; }
+      .header-title { font-size: 0.85rem; }
+      .main { padding: 10px 10px; gap: 10px; }
+      .players-row, .tools-row { gap: 10px; }
+      .player-panel { border-radius: 6px; }
+      .player-body { padding: 10px 12px; }
+      .lp-display { padding: 10px 8px 8px; }
+      .lp-number { font-size: 2rem; letter-spacing: -1px; }
+      .lp-label { font-size: 0.55rem; margin-top: 2px; }
+      .btn-lp { padding: 6px 10px; font-size: 0.8rem; }
+      .quick-btns { gap: 4px; margin-top: 6px; }
+      .qbtn { padding: 3px 6px; font-size: 0.65rem; }
+      .lp-history { max-height: 70px; margin-top: 6px; padding-top: 6px; }
+      .hist-title { font-size: 0.55rem; margin-bottom: 3px; }
+      .hist-item { padding: 1px 0; font-size: 0.65rem; }
+      .tool-card { padding: 10px 12px; }
+      .tool-top { margin-bottom: 8px; }
+      .action-btn { padding: 6px; font-size: 0.75rem; margin-bottom: 8px; }
+      .coins-area { min-height: 70px; gap: 12px; }
+      .coin-scene { width: 55px; height: 55px; }
+      .coin { width: 55px; height: 55px; }
+      .dice-area { min-height: 70px; gap: 10px; }
+      .dice-scene { width: 50px; height: 50px; }
+      .dice-cube { width: 50px; height: 50px; }
+      .dice-face { width: 50px; height: 50px; border-radius: 8px; }
     }
   </style>
 </head>
@@ -935,42 +963,49 @@ function animateDice(cubeEl, targetRot, cb) {
 }
 
 /* ═══════════════════════════════════════════════
+   SCREEN WAKE LOCK - Prevent device from sleeping
+═══════════════════════════════════════════════ */
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Screen wake lock acquired');
+      
+      // Re-acquire lock if it's released
+      wakeLock.addEventListener('release', () => {
+        console.log('Screen wake lock was released');
+        requestWakeLock();
+      });
+    }
+  } catch (err) {
+    console.log(`Wake lock error: ${err.name}, ${err.message}`);
+  }
+}
+
+// Request wake lock on page visibility change
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden) {
+    if (wakeLock !== null) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } else {
+    await requestWakeLock();
+  }
+});
+
+// Request wake lock on load
+window.addEventListener('load', requestWakeLock);
+
+/* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
 renderCoinArea();
 renderDiceArea();
 
-/* ═══════════════════════════════════════════════
-   MOBILE HEADER AUTO-HIDE
-   - Only active on screens ≤ 680px
-   - Slides out when scrolling down, back in on up
-═══════════════════════════════════════════════ */
-(function () {
-  const hdr = document.querySelector('.header');
-  let lastY = 0;
-  let ticking = false;
 
-  window.addEventListener('scroll', () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      if (window.innerWidth <= 680) {
-        const y = window.scrollY;
-        // hide when scrolling down past 40px, reveal when scrolling up
-        if (y > lastY && y > 40) {
-          hdr.classList.add('hidden');
-        } else {
-          hdr.classList.remove('hidden');
-        }
-        lastY = y;
-      } else {
-        // desktop: always visible
-        hdr.classList.remove('hidden');
-      }
-      ticking = false;
-    });
-  }, { passive: true });
-}());
 </script>
 </body>
 </html>

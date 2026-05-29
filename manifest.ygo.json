@@ -1,0 +1,15 @@
+{
+  "name": "Yu-Gi-Oh! LP Calculator",
+  "short_name": "Yu-Gi-Oh! LP Calculator",
+  "start_url": "./yu-gi-oh.html",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
