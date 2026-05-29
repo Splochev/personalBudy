@@ -754,6 +754,54 @@
               </div>
             </a>
 
+            <!-- CatanBuddy — Board Generator -->
+            <a
+              class="app-card"
+              href="./catan.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(249, 115, 22, 0.12)"
+              >
+                <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs><clipPath id="hexci"><polygon points="13,1 24,7 24,19 13,25 2,19 2,7"/></clipPath></defs>
+                  <g clip-path="url(#hexci)">
+                    <polygon points="13,13 13,1 24,7"  fill="#2d6a2d"/>
+                    <polygon points="13,13 24,7 24,19" fill="#c0522a"/>
+                    <polygon points="13,13 24,19 13,25" fill="#7a7f8e"/>
+                    <polygon points="13,13 13,25 2,19" fill="#c8a020"/>
+                    <polygon points="13,13 2,19 2,7"   fill="#5dba5d"/>
+                    <polygon points="13,13 2,7 13,1"   fill="#a88a50"/>
+                  </g>
+                  <polygon points="13,1 24,7 24,19 13,25 2,19 2,7" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
+                  <polygon points="13,7 18,10 18,16 13,19 8,16 8,10" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                </svg>
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_catan_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_catan_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #f97316">
+                <span x-text="$store.pb.t('app_catan_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
+
             <!-- Yu-Gi-Oh! — LP Calculator -->
             <a
               class="app-card"
@@ -952,6 +1000,10 @@
           app_yugioh_desc:
             "Track Life Points for your dueling matches. Quick and easy counter for competitive card games.",
           app_yugioh_link: "Open LP Calculator",
+          app_catan_title: "Catan Board Generator",
+          app_catan_desc:
+            "Randomize Settlers of Catan boards with configurable placement rules. Supports 4 and 6 player setups.",
+          app_catan_link: "Open CatanBuddy",
           app_card_translator_title: "Card Translator",
           app_card_translator_desc:
             "Upload images, write text under each, and generate a PDF for printing.",
@@ -1001,6 +1053,10 @@
           app_yugioh_desc:
             "Следете точки на живот за вашите дуели. Бърз и лесен брояч за състезателни карташни игри.",
           app_yugioh_link: "Отвори LP Калкулатор",
+          app_catan_title: "Катан Генератор на дъска",
+          app_catan_desc:
+            "Генерирайте случайни дъски за Катан с настройки за правила. Поддържа 4 и 6 играча.",
+          app_catan_link: "Отвори CatanBuddy",
           app_card_translator_title: "Превод на карти",
           app_card_translator_desc:
             "Качете изображения, напишете текст под всяко и генерирайте PDF за отпечатване.",

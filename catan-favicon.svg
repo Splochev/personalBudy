@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="hexclip">
+      <polygon points="32,3 59,18 59,46 32,61 5,46 5,18"/>
+    </clipPath>
+  </defs>
+  <!-- 6 terrain wedges from center -->
+  <g clip-path="url(#hexclip)">
+    <polygon points="32,32 32,3 59,18"  fill="#2d6a2d"/>
+    <polygon points="32,32 59,18 59,46" fill="#c0522a"/>
+    <polygon points="32,32 59,46 32,61" fill="#7a7f8e"/>
+    <polygon points="32,32 32,61 5,46"  fill="#c8a020"/>
+    <polygon points="32,32 5,46 5,18"   fill="#5dba5d"/>
+    <polygon points="32,32 5,18 32,3"   fill="#a88a50"/>
+  </g>
+  <!-- Outer hex border -->
+  <polygon points="32,3 59,18 59,46 32,61 5,46 5,18" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="3"/>
+  <!-- Inner hex highlight -->
+  <polygon points="32,20 43,26 43,38 32,44 21,38 21,26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+  <!-- Settlement silhouette -->
+  <polygon points="32,27 23,34 41,34" fill="white" opacity="0.92"/>
+  <rect x="27" y="34" width="10" height="7" fill="white" opacity="0.92"/>
+  <rect x="30" y="37" width="4" height="4" fill="rgba(0,0,0,0.35)"/>
+</svg>

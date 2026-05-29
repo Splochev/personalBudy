@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CatanBuddy – Board Generator</title>
+  <link rel="icon" type="image/svg+xml" href="./catan-favicon.svg"/>
+  <style>
+    :root {
+      --bg:#0f1117; --surface:#1a1d27; --surface2:#252833; --surface3:#2f3342;
+      --border:#353849; --text:#e8eaf0; --text2:#9ca3b8; --text3:#6b7280;
+      --accent:#22c55e; --accent-h:#16a34a; --accent-bg:rgba(34,197,94,.10);
+      --radius:10px; --radius-sm:6px;
+      --shadow:0 4px 24px rgba(0,0,0,.35); --trans:all .2s ease;
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+    html { font-size:14px; -webkit-text-size-adjust:100% }
+    body {
+      font-family:"Segoe UI",system-ui,sans-serif;
+      background:var(--bg); color:var(--text);
+      min-height:100vh; display:flex; flex-direction:column;
+    }
+
+    /* TOPBAR */
+    #topbar {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 16px;
+      background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .logo { display:flex; align-items:center; gap:8px; font-size:1.1rem; font-weight:700; color:var(--accent); letter-spacing:-.5px }
+    .logo svg { width:22px; height:22px }
+    .topbar-sep { flex:1 }
+    .chip {
+      display:inline-flex; align-items:center;
+      background:var(--accent-bg); border:1px solid rgba(34,197,94,.25);
+      color:var(--accent); border-radius:99px; padding:3px 10px;
+      font-size:.7rem; font-weight:600; letter-spacing:.3px;
+    }
+
+    /* MAIN */
+    main {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      padding:14px 12px 40px; gap:14px;
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text2);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.8125rem;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: var(--trans);
+      white-space: nowrap;
+    }
+
+
+    /* PANEL */
+    .panel {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:16px;
+      width:100%; max-width:860px; box-shadow:var(--shadow);
+    }
+    .panel-header {
+      display:flex; align-items:center; justify-content:space-between;
+      flex-wrap:wrap; gap:6px; margin-bottom:14px;
+    }
+    .panel-title { font-size:.72rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.5px }
+    .panel-hint { font-size:.71rem; color:var(--text3) }
+
+    /* SECTION LABEL */
+    .section-label { font-size:.7rem; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px }
+
+    /* BOARD CONFIG */
+    .ctrl-group { display:flex; flex-direction:column; gap:6px }
+    .seg-btns { display:flex; gap:4px }
+    .seg-btn {
+      min-height:40px; padding:7px 18px;
+      border-radius:var(--radius-sm); font-size:.8rem; font-weight:600;
+      cursor:pointer; border:1px solid var(--border);
+      background:var(--surface2); color:var(--text2);
+      transition:var(--trans); -webkit-tap-highlight-color:transparent;
+    }
+    .seg-btn:hover { background:var(--surface3); color:var(--text) }
+    .seg-btn.active { background:var(--accent); border-color:var(--accent); color:#fff }
+
+    /* REGENERATE */
+    .btn-regen {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      min-height:44px; padding:10px 20px; border-radius:var(--radius-sm);
+      font-weight:600; font-size:.85rem; cursor:pointer; border:none;
+      background:var(--accent); color:#fff; transition:var(--trans);
+      white-space:nowrap; -webkit-tap-highlight-color:transparent;
+    }
+    .btn-regen:hover { background:var(--accent-h) }
+
+    /* DIVIDER */
+    .divider { border:none; border-top:1px solid var(--border); margin:16px 0 }
+
+    /* RULES GRID — 1 col mobile, 2 tablet, 3 desktop */
+    .rules-grid { display:grid; grid-template-columns:1fr; gap:6px }
+    .rule-card {
+      display:flex; align-items:flex-start; gap:10px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:var(--radius-sm); padding:11px 13px;
+      cursor:pointer; transition:var(--trans); user-select:none;
+      min-height:48px; -webkit-tap-highlight-color:transparent;
+    }
+    .rule-card:hover { border-color:#4a4f62; background:var(--surface3) }
+    .rule-card.active { border-color:rgba(34,197,94,.45); background:rgba(34,197,94,.07) }
+    .rule-icon {
+      width:28px; height:28px; border-radius:6px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:14px; flex-shrink:0; background:var(--surface3); transition:var(--trans);
+    }
+    .rule-card.active .rule-icon { background:rgba(34,197,94,.15) }
+    .rule-card-body { flex:1; min-width:0 }
+    .rule-card-title { font-size:.8rem; font-weight:600; color:var(--text); line-height:1.3 }
+    .rule-card.active .rule-card-title { color:#86efac }
+    .rule-card-desc { font-size:.71rem; color:var(--text3); margin-top:3px; line-height:1.45 }
+    .rule-check {
+      width:16px; height:16px; border-radius:4px; flex-shrink:0;
+      border:1.5px solid var(--border); margin-top:2px;
+      display:flex; align-items:center; justify-content:center; transition:var(--trans);
+    }
+    .rule-card.active .rule-check { background:var(--accent); border-color:var(--accent) }
+    .rule-check svg { display:none }
+    .rule-card.active .rule-check svg { display:block }
+
+    /* BOARD WRAP */
+    .board-wrap {
+      width:100%; max-width:860px; background:var(--surface);
+      border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px; box-shadow:var(--shadow);
+      display:flex; flex-direction:column; align-items:center; gap:14px;
+    }
+    .board-header {
+      display:flex; align-items:center; justify-content:space-between;
+      width:100%; flex-wrap:wrap; gap:6px;
+    }
+    .board-title { font-size:.78rem; font-weight:600; color:var(--text3); letter-spacing:.5px; text-transform:uppercase }
+    .board-badge {
+      font-size:.7rem; font-weight:600; color:var(--text3);
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:99px; padding:2px 10px;
+    }
+    .board-badge.custom { color:#fbbf24; border-color:rgba(251,191,36,.3); background:rgba(251,191,36,.07) }
+    canvas#board { display:block; max-width:100%; border-radius:8px }
+
+    /* LEGEND */
+    .legend { display:flex; flex-wrap:wrap; gap:6px 14px; justify-content:center }
+    .legend-item { display:flex; align-items:center; gap:5px; font-size:.75rem; color:var(--text2) }
+    .legend-swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0 }
+
+    /* TOAST */
+    #toast {
+      position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+      background:var(--surface); border:1px solid var(--border); color:var(--text);
+      border-radius:var(--radius-sm); padding:10px 16px; font-size:.82rem; font-weight:500;
+      box-shadow:var(--shadow); z-index:999; opacity:0; transition:opacity .3s ease;
+      pointer-events:none; white-space:nowrap;
+    }
+    #toast.show { opacity:1 }
+    #toast.warn { border-color:rgba(251,191,36,.4); color:#fbbf24 }
+
+    /* DESKTOP ENHANCEMENTS */
+    @media (min-width:540px) {
+      main { padding:24px 20px 48px }
+      .panel, .board-wrap { padding:24px }
+      .rules-grid { grid-template-columns:repeat(2,1fr) }
+    }
+    @media (min-width:768px) {
+      .rules-grid { grid-template-columns:repeat(3,1fr) }
+    }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="tl"><polygon points="11,1 20,5.5 20,16.5 11,21 2,16.5 2,5.5"/></clipPath></defs>
+      <g clip-path="url(#tl)">
+        <polygon points="11,11 11,1 20,5.5"  fill="#2d6a2d"/>
+        <polygon points="11,11 20,5.5 20,16.5" fill="#c0522a"/>
+        <polygon points="11,11 20,16.5 11,21"  fill="#7a7f8e"/>
+        <polygon points="11,11 11,21 2,16.5"   fill="#c8a020"/>
+        <polygon points="11,11 2,16.5 2,5.5"   fill="#5dba5d"/>
+        <polygon points="11,11 2,5.5 11,1"     fill="#a88a50"/>
+      </g>
+      <polygon points="11,1 20,5.5 20,16.5 11,21 2,16.5 2,5.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+      <polygon points="11,6.5 15.5,9 15.5,14 11,16.5 6.5,14 6.5,9" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    </svg>
+    CatanBuddy
+  </div>
+  <div class="topbar-sep"></div>
+  <a
+    href="index.html"
+    class="btn-back btn-ghost"
+    style="text-decoration: none"
+  >
+    <svg
+      style="width: 16px; height: 16px"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <path d="M3 12h18M3 12l9-9m-9 9l9 9" />
+    </svg>
+    Back to Home
+  </a> 
+</div>
+
+<main>
+
+  <!-- GENERATION SETTINGS (single merged panel) -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Generation Settings</span>
+      <span class="panel-hint">✓ = <span style="color:#86efac">allowed</span> · unchecked = enforced</span>
+    </div>
+
+    <!-- Board configuration + regenerate -->
+    <div style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div class="ctrl-group">
+        <div class="section-label">Players</div>
+        <div class="seg-btns">
+          <button class="seg-btn active" data-group="players" onclick="setPlayers(4,this)">4 Players</button>
+          <button class="seg-btn" data-group="players" onclick="setPlayers(6,this)">6 Players</button>
+        </div>
+      </div>
+      <button class="btn-regen" onclick="generateBoard()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Regenerate Board
+      </button>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Placement rules -->
+    <div class="section-label">Placement Rules</div>
+    <div class="rules-grid">
+
+      <div class="rule-card" id="rc-68touch" onclick="toggleRule('68touch',this)">
+        <div class="rule-icon">🔴</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">6 &amp; 8 Can Touch</div>
+          <div class="rule-card-desc">Allow 6 and 8 tokens to be adjacent to each other</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div class="rule-card" id="rc-212touch" onclick="toggleRule('212touch',this)">
+        <div class="rule-icon">🎲</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">2 &amp; 12 Can Touch</div>
+          <div class="rule-card-desc">Allow 2 and 12 tokens to be placed next to each other</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div class="rule-card" id="rc-samenum" onclick="toggleRule('samenum',this)">
+        <div class="rule-icon">🔢</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">Same Numbers Can Touch</div>
+          <div class="rule-card-desc">Allow identical number tokens to be adjacent</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div class="rule-card" id="rc-sameres" onclick="toggleRule('sameres',this)">
+        <div class="rule-icon">🌾</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">Same Resource Can Touch</div>
+          <div class="rule-card-desc">Allow identical resource types to be placed adjacent</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div class="rule-card" id="rc-desertcenter" onclick="toggleRule('desertcenter',this)">
+        <div class="rule-icon">🏜️</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">Desert Can Be In Center</div>
+          <div class="rule-card-desc">Allow desert to occupy the central hex position</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+      <div class="rule-card active" id="rc-double68" onclick="toggleRule('double68',this)">
+        <div class="rule-icon">⚡</div>
+        <div class="rule-card-body">
+          <div class="rule-card-title">Resource Can Have 2+ of 6/8</div>
+          <div class="rule-card-desc">Allow a resource to hold multiple 6 or 8 tokens (unchecked = SLOW)</div>
+        </div>
+        <div class="rule-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOARD -->
+  <div class="board-wrap">
+    <div class="board-header">
+      <div class="board-title">Game Board</div>
+      <div class="board-badge" id="boardBadge">4P · Standard</div>
+    </div>
+    <canvas id="board"></canvas>
+    <div class="legend" id="legend"></div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const TILE_TYPES = {
+  hills:     { label:'Hills (Brick)',    color:'#c0522a', emoji:'🧱' },
+  forest:    { label:'Forest (Lumber)',  color:'#2d6a2d', emoji:'🌲' },
+  mountains: { label:'Mountains (Ore)',  color:'#7a7f8e', emoji:'⛰️' },
+  fields:    { label:'Fields (Grain)',   color:'#c8a020', emoji:'🌾' },
+  pasture:   { label:'Pasture (Wool)',   color:'#5dba5d', emoji:'🐑' },
+  desert:    { label:'Desert',           color:'#a88a50', emoji:'🏜️' },
+};
+
+const DICE_PROB = { 2:1,3:2,4:3,5:4,6:5,8:5,9:4,10:3,11:2,12:1 };
+const HIGH    = new Set([6,8]);
+const EXTREME = new Set([2,12]);
+
+// Physical coastal frame tiles. Each entry is one frame piece; the array lists the port type(s)
+// on each harbor-bearing edge of that piece (empty string = no harbor on that edge).
+// Shuffling is done at the tile level so paired harbors always stay on the same frame piece.
+//
+// 4P base (6 frame pieces, 5 coast positions / 4 edges each → 9 harbors total):
+//   tile 1: 3:1 at edge 1-2, 2:1 pasture at edge 4-5
+//   tile 2: 3:1 at edge 2-3
+//   tile 3: 3:1 at edge 1-2, 2:1 hills at edge 3-4
+//   tile 4: 2:1 forest at edge 2-3
+//   tile 5: 3:1 at edge 1-2, 2:1 fields at edge 3-4
+//   tile 6: 2:1 mountains at edge 2-3
+//
+// 6P extension (4 frame pieces, 2 coast positions / 1 edge each → 2 extra harbors):
+//   tile 7: 3:1 at edge 1-2
+//   tile 8: 2:1 pasture at edge 1-2
+//   tile 9: empty (no harbor)
+//   tile 10: empty (no harbor)
+const CFG = {
+  4: {
+    tileCounts: { hills:3, forest:4, mountains:3, fields:4, pasture:4, desert:1 },
+    rows: [3,4,5,4,3],
+    numbers: [5,2,6,3,8,10,9,12,11,4,8,10,9,4,5,6,3,11],
+    // portTiles: array of frame pieces; each piece lists its harbor port types (empty = no harbor)
+    portTiles: [
+      ['3:1', 'wool'],   // tile 1
+      ['3:1'],           // tile 2
+      ['3:1', 'brick'],  // tile 3
+      ['lumber'],        // tile 4
+      ['3:1', 'grain'],  // tile 5
+      ['ore'],           // tile 6
+    ],
+  },
+  6: {
+    tileCounts: { hills:5, forest:6, mountains:5, fields:6, pasture:6, desert:2 },
+    rows: [3,4,5,6,5,4,3],
+    numbers: [2,5,4,6,3,9,8,11,11,10,6,3,8,4,8,10,11,12,10,5,4,9,5,9,12,3,2,6],
+    portTiles: [
+      // 4P base tiles
+      ['3:1', 'wool'],
+      ['3:1'],
+      ['3:1', 'brick'],
+      ['lumber'],
+      ['3:1', 'grain'],
+      ['ore'],
+      // 6P extension tiles
+      ['3:1'],           // tile 7
+      ['wool'],          // tile 8
+      [],                // tile 9  — ocean-only frame piece
+      [],                // tile 10 — ocean-only frame piece
+    ],
+  },
+};
+
+const PORT_STYLE = {
+  '3:1':  { bg:'#1a1d27', border:'#9ca3b8', text:'#e8eaf0' },
+  brick:  { bg:'#c0522a', border:'#e8775a', text:'#fff' },
+  lumber: { bg:'#2d6a2d', border:'#5dba5d', text:'#fff' },
+  ore:    { bg:'#7a7f8e', border:'#b0b5c0', text:'#fff' },
+  grain:  { bg:'#c8a020', border:'#f0c840', text:'#fff' },
+  wool:   { bg:'#5dba5d', border:'#8de08d', text:'#fff' },
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let players   = 4;
+let boardState = null;
+
+const rules = {
+  '68touch':    false,
+  '212touch':   false,
+  samenum:      false,
+  sameres:      false,
+  desertcenter: false,
+  double68:     true,
+};
+
+// ─── UI HANDLERS ─────────────────────────────────────────────────────────────
+function setPlayers(p, btn) {
+  players = p;
+  document.querySelectorAll('[data-group="players"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  generateBoard();
+}
+
+function toggleRule(key, el) {
+  rules[key] = !rules[key];
+  el.classList.toggle('active', rules[key]);
+  generateBoard();
+}
+
+// ─── HEX NEIGHBOUR MAP ───────────────────────────────────────────────────────
+function buildNeighbours(rows) {
+  const start = []; let s = 0;
+  for (const c of rows) { start.push(s); s += c; }
+  const total = s;
+  const adj = Array.from({ length:total }, () => []);
+
+  function link(a, b) {
+    if (a >= 0 && a < total && b >= 0 && b < total) {
+      if (!adj[a].includes(b)) adj[a].push(b);
+      if (!adj[b].includes(a)) adj[b].push(a);
+    }
+  }
+
+  for (let r = 0; r < rows.length; r++) {
+    const cols = rows[r];
+    for (let c = 0; c < cols; c++) {
+      const i = start[r] + c;
+      if (c + 1 < cols) link(i, i + 1);
+      if (r + 1 < rows.length) {
+        const nextCols = rows[r + 1];
+        if (nextCols > cols) {
+          link(i, start[r+1] + c);
+          link(i, start[r+1] + c + 1);
+        } else {
+          if (c - 1 >= 0 && c - 1 < nextCols) link(i, start[r+1] + c - 1);
+          if (c >= 0 && c < nextCols)           link(i, start[r+1] + c);
+        }
+      }
+    }
+  }
+  return { adj, start, total };
+}
+
+function getCenterIdx(rows) {
+  const mid = Math.floor(rows.length / 2);
+  const s = rows.slice(0, mid).reduce((a, b) => a + b, 0);
+  return s + Math.floor(rows[mid] / 2);
+}
+
+// ─── SHUFFLE ─────────────────────────────────────────────────────────────────
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ─── CONSTRAINT VALIDATION ───────────────────────────────────────────────────
+function hasNumberViolation(nums, res, adj) {
+  const n = nums.length;
+  for (let i = 0; i < n; i++) {
+    const ni = nums[i]; if (ni === null) continue;
+    for (const j of adj[i]) {
+      const nj = nums[j]; if (nj === null) continue;
+      if (!rules['68touch']  && HIGH.has(ni)    && HIGH.has(nj))    return true;
+      if (!rules['212touch'] && EXTREME.has(ni) && EXTREME.has(nj)) return true;
+      if (!rules.samenum     && ni === nj)                           return true;
+    }
+  }
+  if (!rules.double68) {
+    const count68 = {};
+    for (let i = 0; i < n; i++) {
+      if (HIGH.has(nums[i])) {
+        const r = res[i];
+        count68[r] = (count68[r] || 0) + 1;
+        if (count68[r] >= 2) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function hasResourceViolation(res, adj) {
+  if (rules.sameres) return false;
+  const n = res.length;
+  for (let i = 0; i < n; i++) {
+    if (res[i] === 'desert') continue;
+    for (const j of adj[i]) {
+      if (j > i && res[j] !== 'desert' && res[j] === res[i]) return true;
+    }
+  }
+  return false;
+}
+
+// ─── BOARD GENERATION ────────────────────────────────────────────────────────
+function generateBoard() {
+  const cfg = CFG[players];
+  const { adj } = buildNeighbours(cfg.rows);
+  const centerIdx = getCenterIdx(cfg.rows);
+
+  let pool = [];
+  for (const [type, cnt] of Object.entries(cfg.tileCounts))
+    for (let i = 0; i < cnt; i++) pool.push(type);
+
+  const MAX_RES = 2000, MAX_NUM = rules.double68 ? 2000 : 50000;
+
+  let res = null;
+  for (let t = 0; t < MAX_RES; t++) {
+    const attempt = shuffle(pool);
+    if (!rules.desertcenter && attempt[centerIdx] === 'desert') {
+      const swapTo = attempt.findIndex((x, i) => x !== 'desert' && i !== centerIdx);
+      if (swapTo !== -1) [attempt[centerIdx], attempt[swapTo]] = [attempt[swapTo], attempt[centerIdx]];
+    }
+    if (!hasResourceViolation(attempt, adj)) { res = attempt; break; }
+  }
+  if (!res) res = shuffle(pool);
+
+  const nonDesert = res.map((t, i) => t !== 'desert' ? i : -1).filter(i => i !== -1);
+  const numPool = [...cfg.numbers];
+  let nums = new Array(res.length).fill(null);
+  let placed = false;
+
+  for (let t = 0; t < MAX_NUM; t++) {
+    const sn = shuffle(numPool);
+    const tryNums = [...nums];
+    nonDesert.forEach((idx, i) => { tryNums[idx] = sn[i]; });
+    if (!hasNumberViolation(tryNums, res, adj)) { nums = tryNums; placed = true; break; }
+  }
+
+  if (!placed) {
+    const sn = shuffle(numPool);
+    nonDesert.forEach((idx, i) => { nums[idx] = sn[i]; });
+    showToast('⚠ Some constraints couldn\'t be fully satisfied', 'warn');
+  }
+
+  const tiles = res.map((type, i) => ({ type, num: nums[i] }));
+  boardState = { tiles, rows: cfg.rows, portTiles: shuffle([...cfg.portTiles]) };
+
+  updateBadge();
+  renderBoard();
+  renderLegend();
+}
+
+function updateBadge() {
+  const active = Object.entries(rules).filter(([, v]) => v).length;
+  const badge = document.getElementById('boardBadge');
+  badge.textContent = `${players}P` + (active ? ` · ${active} rule${active > 1 ? 's' : ''} relaxed` : '');
+  badge.className = 'board-badge' + (active ? ' custom' : '');
+}
+
+// ─── RENDERING ───────────────────────────────────────────────────────────────
+function renderBoard() {
+  if (!boardState) return;
+  const { tiles, rows, portTiles } = boardState;
+
+  const canvas = document.getElementById('board');
+  const dpr = window.devicePixelRatio || 1;
+  const maxCols = Math.max(...rows);
+  const availW = (canvas.parentElement ? canvas.parentElement.clientWidth : 0) || (window.innerWidth - 40);
+  // portPad = HEX_R * 3.0 — solve for HEX_R so canvasW = (maxCols+1)*W + portPad fits availW
+  const HEX_R  = Math.min(62, availW / ((maxCols + 1) * Math.sqrt(3) + 3.0));
+  const W = HEX_R * Math.sqrt(3);
+  const H = HEX_R * 2;
+  const portPad = HEX_R * 3.0;
+
+  const canvasW = Math.ceil((maxCols + 1) * W + portPad);
+  const canvasH = Math.ceil(rows.length * H * 0.75 + H * 0.25 + portPad);
+
+  canvas.width  = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width  = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const og = ctx.createRadialGradient(canvasW/2, canvasH/2, 0, canvasW/2, canvasH/2, canvasW/1.3);
+  og.addColorStop(0, '#0e2040'); og.addColorStop(1, '#060e1a');
+  ctx.fillStyle = og; ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const offX = portPad / 2 + W * 0.5;
+  const offY = portPad / 2;
+  const hexCenters = [];
+
+  let ti = 0;
+  for (let r = 0; r < rows.length; r++) {
+    const cols = rows[r];
+    const rx = offX + (maxCols - cols) * W * 0.5;
+    const ry = offY + r * H * 0.75;
+    for (let c = 0; c < cols; c++) {
+      const cx = rx + c * W + W / 2, cy = ry + HEX_R;
+      hexCenters.push({ cx, cy, r, c });
+      if (ti < tiles.length) { drawHex(ctx, cx, cy, HEX_R, tiles[ti]); ti++; }
+    }
+  }
+
+  const perim = getPerimeterHexes(hexCenters, rows);
+  const pts   = distributePortsOnPerimeter(perim, portTiles, HEX_R);
+  pts.forEach(({ cx, cy, hex1, hex2, type }) => drawPort(ctx, cx, cy, hex1, hex2, HEX_R, type));
+}
+
+function hexPts(cx, cy, r) {
+  return Array.from({ length:6 }, (_, i) => {
+    const a = Math.PI / 180 * (60 * i - 30);
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+}
+
+function tracePoly(ctx, pts) {
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+  ctx.closePath();
+}
+
+function drawHex(ctx, cx, cy, r, tile) {
+  const pts  = hexPts(cx, cy, r);
+  const info = TILE_TYPES[tile.type];
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+  tracePoly(ctx, pts);
+  const g = ctx.createRadialGradient(cx - r*.2, cy - r*.2, r*.05, cx, cy, r*1.1);
+  g.addColorStop(0, lighten(info.color, 24)); g.addColorStop(1, info.color);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+
+  tracePoly(ctx, pts);
+  ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  const es = Math.max(14, r * .55);
+  ctx.font = `${es}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(info.emoji, cx, tile.num ? cy - r*.22 : cy);
+
+  if (tile.num) {
+    const tr = r * .34, isRed = HIGH.has(tile.num);
+    ctx.beginPath(); ctx.arc(cx, cy + r*.26, tr, 0, Math.PI*2);
+    ctx.fillStyle = '#f5e8c0'; ctx.fill();
+    ctx.strokeStyle = isRed ? '#ef4444' : 'rgba(0,0,0,.2)';
+    ctx.lineWidth = isRed ? 2 : 1; ctx.stroke();
+
+    ctx.fillStyle = isRed ? '#c00' : '#222';
+    ctx.font = `bold ${Math.max(11, r*.28)}px "Segoe UI",system-ui,sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(tile.num, cx, cy + r*.26);
+
+    const dots = DICE_PROB[tile.num] || 0, dr = Math.max(1.5, r*.04), sp = dr * 2.5;
+    const sx = cx - (dots - 1) * sp / 2;
+    for (let d = 0; d < dots; d++) {
+      ctx.beginPath(); ctx.arc(sx + d * sp, cy + r*.26 + tr*.56, dr, 0, Math.PI*2);
+      ctx.fillStyle = isRed ? '#b00' : '#555'; ctx.fill();
+    }
+  }
+}
+
+function drawPort(ctx, cx, cy, hex1, hex2, r, type) {
+  const s = PORT_STYLE[type] || PORT_STYLE['3:1'], pr = r * .45;
+  // draw a dashed line from the harbor circle edge toward each of the 2 served coast hexes
+  [hex1, hex2].forEach(({ cx: hx, cy: hy }) => {
+    const a = Math.atan2(hy - cy, hx - cx);
+    const lx1 = cx + Math.cos(a) * pr,      ly1 = cy + Math.sin(a) * pr;
+    const lx2 = hx - Math.cos(a) * r * 0.8, ly2 = hy - Math.sin(a) * r * 0.8;
+    ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2);
+    ctx.strokeStyle = s.border; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+  });
+  ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2);
+  ctx.fillStyle = s.bg; ctx.fill();
+  ctx.strokeStyle = s.border; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = s.text;
+  ctx.font = `bold ${Math.max(8, pr * .65)}px "Segoe UI",system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(type === '3:1' ? '3:1' : '2:1', cx, cy - pr * .12);
+  const em = { brick:'🧱', lumber:'🌲', ore:'⛰️', grain:'🌾', wool:'🐑' }[type] || '';
+  if (em) { ctx.font = `${Math.max(8, pr * .55)}px serif`; ctx.fillText(em, cx, cy + pr * .38); }
+}
+
+function getPerimeterHexes(hexCenters, rows) {
+  const p = [];
+  for (let r = 0; r < rows.length; r++) {
+    const rh = hexCenters.filter(h => h.r === r);
+    if (r === 0 || r === rows.length - 1) { p.push(...rh); }
+    else { p.push(rh[0], rh[rh.length - 1]); }
+  }
+  return p;
+}
+
+// Returns all valid harbor positions: ocean hex spots each adjacent to exactly 2 perimeter hexes.
+// Each harbor circle sits at the exterior common neighbor of a pair of adjacent coast hexes.
+function getHarborPositions(perim, hexR) {
+  const bx = perim.reduce((s, h) => s + h.cx, 0) / perim.length;
+  const by = perim.reduce((s, h) => s + h.cy, 0) / perim.length;
+  const W = hexR * Math.sqrt(3);
+  const result = [];
+  for (let i = 0; i < perim.length; i++) {
+    for (let j = i + 1; j < perim.length; j++) {
+      const dx = perim[j].cx - perim[i].cx, dy = perim[j].cy - perim[i].cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (Math.abs(dist - W) < hexR * 0.15) {
+        // adjacent pair — find their exterior shared neighbor (the ocean harbor hex center)
+        const mx = (perim[i].cx + perim[j].cx) / 2;
+        const my = (perim[i].cy + perim[j].cy) / 2;
+        let px = -dy / dist * hexR * 1.5, py = dx / dist * hexR * 1.5;
+        if (px * (mx - bx) + py * (my - by) < 0) { px = -px; py = -py; }
+        result.push({ cx: mx + px, cy: my + py, hex1: perim[i], hex2: perim[j] });
+      }
+    }
+  }
+  return result;
+}
+
+// Assigns shuffled portTiles to evenly-spaced harbor slots around the perimeter.
+// Double-harbor tiles get 2 consecutive slots so their paired ports render side by side.
+// Empty tiles (ocean-only frame pieces) consume a slot but render nothing.
+function distributePortsOnPerimeter(perim, portTiles, hexR) {
+  const harbors = getHarborPositions(perim, hexR);
+  const bx = perim.reduce((s, h) => s + h.cx, 0) / perim.length;
+  const by = perim.reduce((s, h) => s + h.cy, 0) / perim.length;
+  const sorted = [...harbors].sort((a, b) =>
+    Math.atan2(a.cy - by, a.cx - bx) - Math.atan2(b.cy - by, b.cx - bx)
+  );
+  // Step must be based on total port count (not tile count) so that
+  // double-harbor tiles properly consume 2 consecutive slots and the
+  // running offset never collides regardless of shuffle order.
+  const totalPorts = portTiles.reduce((s, t) => s + t.length, 0);
+  const step = sorted.length / totalPorts;
+  const result = [];
+  let portsSoFar = 0; // running count of individual ports placed
+  portTiles.forEach((tile) => {
+    if (tile.length === 0) return; // ocean-only frame piece — no harbor rendered
+    const base = Math.round(portsSoFar * step) % sorted.length;
+    if (tile.length === 1) {
+      result.push({ ...sorted[base], type: tile[0] });
+    } else {
+      // two harbors on same frame piece: place at 2 consecutive slots
+      result.push({ ...sorted[base], type: tile[0] });
+      result.push({ ...sorted[(base + 1) % sorted.length], type: tile[1] });
+    }
+    portsSoFar += tile.length;
+  });
+  return result;
+}
+
+function lighten(hex, pct) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${Math.min(255,(n>>16)+pct)},${Math.min(255,((n>>8)&0xff)+pct)},${Math.min(255,(n&0xff)+pct)})`;
+}
+
+// ─── LEGEND ──────────────────────────────────────────────────────────────────
+function renderLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  for (const [, info] of Object.entries(TILE_TYPES)) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-swatch" style="background:${info.color}"></div><span>${info.label}</span>`;
+    el.appendChild(item);
+  }
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+generateBoard();
+window.addEventListener('resize', () => { if (boardState) renderBoard(); });
+</script>
+</body>
+</html>
