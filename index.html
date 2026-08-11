@@ -953,6 +953,45 @@
                 </svg>
               </div>
             </a>
+
+            <!-- Debt Calculator -->
+            <a
+              class="app-card"
+              href="./debt-calculator.html"
+              rel="noopener"
+            >
+              <div
+                class="app-card-icon"
+                style="background: rgba(244, 63, 94, 0.12)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v2M12 16v2M9.5 15a2.5 2.5 0 002.5 2h1a2 2 0 000-4h-2a2 2 0 010-4h1a2.5 2.5 0 012.5 2" />
+                </svg>
+              </div>
+              <div>
+                <div
+                  class="app-card-title"
+                  x-text="$store.pb.t('app_debt_calculator_title')"
+                ></div>
+                <div
+                  class="app-card-desc"
+                  x-text="$store.pb.t('app_debt_calculator_desc')"
+                ></div>
+              </div>
+              <div class="app-card-link" style="color: #f43f5e">
+                <span x-text="$store.pb.t('app_debt_calculator_link')"></span>
+                <svg
+                  style="width: 12px; height: 12px"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                </svg>
+              </div>
+            </a>
           </div>
         </div>
       </template>
@@ -1063,6 +1102,10 @@
           app_tax_aggregator_desc:
             "Process Trading 212 CSV files and generate tax reports for Bulgarian NAP.",
           app_tax_aggregator_link: "Open Tax Aggregator",
+          app_debt_calculator_title: "Debt Calculator",
+          app_debt_calculator_desc:
+            "Model your loans against a savings plan and find the month your invested pot can pay off what's left.",
+          app_debt_calculator_link: "Open Debt Calculator",
         },
         bg: {
           welcome_back: "Добре дошли",
@@ -1120,6 +1163,10 @@
           app_tax_aggregator_desc:
             "Обработвайте CSV файлове от Trading 212 и генерирайте данъчни отчети за български НАП.",
           app_tax_aggregator_link: "Отвори агрегатор на данъци",
+          app_debt_calculator_title: "Калкулатор на дългове",
+          app_debt_calculator_desc:
+            "Сравнете заемите си със спестовен план и открийте месеца, в който натрупаната сума може да изплати остатъка.",
+          app_debt_calculator_link: "Отвори калкулатор на дългове",
         },
       };
       

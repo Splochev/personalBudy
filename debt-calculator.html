@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debt Freedom Calculator</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 6v2M12 16v2M9.5 15a2.5 2.5 0 002.5 2h1a2 2 0 000-4h-2a2 2 0 010-4h1a2.5 2.5 0 012.5 2'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0f1117;
+    --surface:#1a1d27;
+    --surface2:#252833;
+    --surface3:#2f3342;
+    --border:#353849;
+    --text:#e8eaf0;
+    --text2:#9ca3b8;
+    --text3:#6b7280;
+    --accent:#22c55e;
+    --accent-h:#16a34a;
+    --accent-bg:rgba(34,197,94,0.10);
+    --danger:#ef4444;
+    --gold:#d4af37;
+    --radius:10px;
+    --radius-sm:6px;
+    --shadow:0 4px 24px rgba(0,0,0,0.35);
+    --trans:all 0.2s ease;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%;font-size:14px}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI","Inter",system-ui,sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 16px;
+    background:var(--surface);border-bottom:1px solid var(--border);
+    flex-shrink:0;position:sticky;top:0;z-index:10;
+  }
+  .logo{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:-0.4px}
+  .logo svg{width:22px;height:22px}
+  .topbar-sep{flex:1}
+  .btn-back{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:7px 14px;border-radius:var(--radius-sm);
+    font-weight:600;font-size:0.8125rem;font-family:inherit;
+    cursor:pointer;border:none;transition:var(--trans);white-space:nowrap;
+  }
+  .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+  .btn-ghost:hover{background:var(--surface3);color:var(--text)}
+
+  /* ── PAGE ── */
+  .page-inner{max-width:1040px;margin:0 auto;padding:28px 16px 20px}
+  .eyebrow{
+    text-transform:uppercase;letter-spacing:0.22em;font-size:11px;
+    font-weight:700;color:var(--accent);margin-bottom:10px;
+  }
+  h1{font-size:clamp(24px,5vw,36px);font-weight:700;letter-spacing:-0.02em;line-height:1.1;margin-bottom:12px}
+  h1 em{font-style:normal;color:var(--gold)}
+  .lede{color:var(--text3);max-width:62ch;font-size:0.9rem;margin-bottom:32px}
+  h2{
+    font-size:0.75rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;
+    color:var(--text3);border-bottom:1px solid var(--border);
+    padding-bottom:8px;margin-bottom:16px;display:flex;align-items:baseline;gap:10px;
+  }
+  h2 .n{color:var(--accent);font-size:0.7rem}
+  section{margin-bottom:40px}
+  .section-desc{color:var(--text3);font-size:0.82rem;margin:-6px 0 16px}
+
+  /* ── DEBTS TABLE ── */
+  .debts{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .debt-row{
+    background:var(--surface);display:flex;align-items:center;gap:12px;
+    padding:13px 16px;font-size:0.85rem;transition:var(--trans);
+  }
+  .debt-row.excluded{opacity:0.42}
+  .debt-row.excluded .name{text-decoration:line-through;color:var(--text3)}
+  .debt-head{background:var(--surface2);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:var(--text3)}
+  .chk,.chk-spacer{width:18px;height:18px;flex-shrink:0}
+  .chk input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;display:block}
+  .debt-row-main{flex:1;min-width:0;display:grid;grid-template-columns:1.4fr 1fr 1fr .8fr;gap:12px;align-items:center}
+  .debt-row .name{font-weight:600}
+  .debt-row .num{font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
+  .debt-total{
+    background:var(--surface3);color:var(--text);
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:16px;font-size:0.9rem;border-radius:var(--radius-sm);margin-top:1px;
+  }
+  .debt-total .big{font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;color:var(--accent);font-weight:700}
+
+  /* ── PERIODS ── */
+  .period{
+    background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);
+    border-radius:var(--radius-sm);padding:16px;margin-bottom:12px;
+    display:grid;grid-template-columns:auto 1fr 1fr 1.2fr auto;gap:14px;align-items:end;
+  }
+  .period .span-note{
+    grid-column:1/-1;font-size:0.72rem;letter-spacing:0.02em;color:var(--text3);margin-top:2px;
+  }
+  .period .span-note.bad{color:var(--danger)}
+  .field label{
+    display:block;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;
+    color:var(--text3);margin-bottom:6px;
+  }
+  .field input{
+    width:100%;background:var(--surface3);border:1px solid var(--border);
+    padding:9px 11px;font-family:inherit;font-size:0.9rem;color:var(--text);
+    font-variant-numeric:tabular-nums;border-radius:var(--radius-sm);outline:none;transition:var(--trans);
+  }
+  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,197,94,0.15)}
+  .period .idx{font-size:1.2rem;color:var(--gold);font-weight:700;padding-bottom:8px}
+  .del{
+    background:none;border:1px solid var(--border);color:var(--danger);
+    width:36px;height:38px;cursor:pointer;font-size:17px;font-family:inherit;border-radius:var(--radius-sm);transition:var(--trans);
+  }
+  .del:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn{
+    font-size:0.8125rem;font-weight:600;padding:9px 18px;cursor:pointer;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;
+    border-radius:var(--radius-sm);font-family:inherit;transition:var(--trans);
+  }
+  .btn:hover{background:var(--accent-h);border-color:var(--accent-h)}
+  .btn.ghost{background:none;color:var(--accent)}
+  .btn.ghost:hover{background:var(--accent-bg)}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+
+  /* ── VERDICT ── */
+  .verdict{
+    background:var(--accent);color:#052e12;border-radius:var(--radius);
+    padding:clamp(18px,4vw,28px);margin-bottom:24px;box-shadow:var(--shadow);
+  }
+  .verdict .label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.16em;opacity:0.75;margin-bottom:10px;font-weight:700}
+  .verdict .headline{font-size:clamp(19px,4vw,28px);line-height:1.2;letter-spacing:-0.01em;font-weight:700}
+  .verdict .headline strong{color:#0b3d1c;font-weight:800}
+  .verdict .sub{margin-top:12px;opacity:0.85;font-size:0.85rem}
+
+  /* ── RATE TABLE ── */
+  .rate-grid{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .rate-row{
+    background:var(--surface);display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:12px;
+    padding:14px 16px;align-items:center;font-size:0.85rem;
+  }
+  .rate-head{background:var(--surface2);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--text3)}
+  .rate-row .num{font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
+  .rate-tag{
+    display:inline-block;font-weight:700;padding:4px 10px;border-radius:var(--radius-sm);
+    background:var(--surface3);color:var(--text);font-size:0.8rem;
+  }
+  .rate-row.hl .rate-tag{background:var(--gold);color:#2a2000}
+  .gain{color:var(--accent);font-weight:600}
+  .final{font-weight:700;font-size:0.9rem;color:var(--text)}
+
+  .note{font-size:0.76rem;color:var(--text3);margin-top:16px;font-style:italic}
+
+  @media(max-width:640px){
+    .debt-row-main{grid-template-columns:1fr 1fr;row-gap:6px}
+    .debt-row-main .name{grid-column:1/-1}
+    .debt-head{display:none}
+    .debt-row .num::before{content:attr(data-l);float:left;font-size:9px;text-transform:uppercase;color:var(--text3)}
+    .period{grid-template-columns:auto 1fr 1fr auto;grid-template-areas:"idx a b del" "idx c c c" "note note note note"}
+    .period .idx{grid-area:idx}
+    .period .del{grid-area:del}
+    .period .f-from{grid-area:a}
+    .period .f-to{grid-area:b}
+    .period .f-amt{grid-area:c}
+    .period .span-note{grid-area:note}
+    .rate-row{grid-template-columns:auto 1fr;row-gap:4px}
+    .rate-row .num::before{content:attr(data-l);float:left;font-size:9px;text-transform:uppercase;color:var(--text3)}
+    .rate-head{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6v2M12 16v2M9.5 15a2.5 2.5 0 002.5 2h1a2 2 0 000-4h-2a2 2 0 010-4h1a2.5 2.5 0 012.5 2"/>
+    </svg>
+    Debt Freedom Calculator
+  </div>
+  <div class="topbar-sep"></div>
+  <a href="index.html" class="btn-back btn-ghost" style="text-decoration:none">
+    <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 12h18M3 12l9-9m-9 9l9 9" />
+    </svg>
+    Back to Home
+  </a>
+</div>
+
+<div class="page-inner">
+
+<div class="eyebrow">Personal Solvency · Projection Tool</div>
+<h1>The debt-freedom <em>ledger</em></h1>
+<p class="lede">Four fixed loans, paid on schedule. Then everything you can spare goes into the market. This works out when the debts clear — and what the invested surplus grows into along the way.</p>
+
+<section>
+  <h2><span class="n">01</span> The debts you carry</h2>
+  <p class="section-desc">Untick a debt to exclude it from every calculation below — balance, monthly payment, and payoff schedule.</p>
+  <div class="debts" id="debts"></div>
+  <div class="debt-total" id="debt-total"></div>
+</section>
+
+<section>
+  <h2><span class="n">02</span> What you already have</h2>
+  <p class="section-desc">Money already saved and invested today. It compounds from month one, before anything you add.</p>
+  <div class="period" style="grid-template-columns:auto 1fr;align-items:end">
+    <div class="idx">€</div>
+    <div class="field">
+      <label>Starting balance (€)</label>
+      <input type="number" min="0" step="500" value="23000" id="initial">
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">03</span> What you can set aside</h2>
+  <p class="section-desc">Add a row for each stretch of time. Each says: from which month to which month (month 1 = now), and how much per month you can spare on top of the loan payments. Leave gaps if some months have nothing spare.</p>
+  <div id="periods"></div>
+  <div class="controls">
+    <button class="btn ghost" id="add">+ Add period</button>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">04</span> When can you stop &amp; pay it off</h2>
+  <div class="verdict" id="verdict"></div>
+  <p class="section-desc">The moment your invested pot first grows big enough to clear the debt still remaining. From that month you could stop saving and wipe the balance in one payment. Faster returns reach it sooner.</p>
+  <div class="rate-grid" id="payoff"></div>
+
+  <h2 style="margin-top:36px"><span class="n">05</span> If instead you keep saving the whole time</h2>
+  <p class="section-desc">What the pot becomes if you run every savings period to the end, at each annual return, compounded monthly.</p>
+  <div class="rate-grid" id="rates"></div>
+  <p class="note">Debt model (your rule): each month, half of every loan's fixed payment reduces its principal; interest is treated as the other half and not modelled separately. Investment contributions and starting balance compound monthly. Figures are estimates — real returns vary and are not guaranteed. This is not financial advice.</p>
+</section>
+
+</div>
+
+<script>
+const DEBTS=[
+  {bal:7849.46, pay:88.39, rate:5.90, active:true},
+  {bal:29272.46, pay:197.26, rate:4.17, active:true},
+  {bal:64126.20, pay:271.78, rate:2.57, active:true},
+  {bal:82128.33, pay:368.69, rate:2.71, active:true},
+];
+const RATES=[0,5,8,10,12];
+
+const eur=n=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' €';
+const eur0=n=>Math.round(n).toLocaleString('en-GB').replace(/,/g,' ')+' €';
+
+const debtsEl=document.getElementById('debts');
+const debtTotalEl=document.getElementById('debt-total');
+function renderDebts(){
+  debtsEl.innerHTML=`<div class="debt-row debt-head">
+      <div class="chk-spacer"></div>
+      <div class="debt-row-main"><div>Loan</div><div class="num">Balance</div><div class="num">Monthly</div><div class="num">Rate</div></div>
+    </div>` +
+    DEBTS.map((d,i)=>`
+      <div class="debt-row${d.active?'':' excluded'}">
+        <label class="chk"><input type="checkbox" data-i="${i}" ${d.active?'checked':''}></label>
+        <div class="debt-row-main">
+          <div class="name">Debt ${i+1}</div>
+          <div class="num" data-l="Balance">${eur(d.bal)}</div>
+          <div class="num" data-l="Monthly">${eur(d.pay)}</div>
+          <div class="num" data-l="Rate">${d.rate.toFixed(2)} %</div>
+        </div>
+      </div>`).join('');
+  debtsEl.querySelectorAll('.chk input').forEach(inp=>{
+    inp.addEventListener('change',e=>{
+      DEBTS[+e.target.dataset.i].active=e.target.checked;
+      renderDebts();
+      compute();
+    });
+  });
+  const total=DEBTS.filter(d=>d.active).reduce((s,d)=>s+d.bal,0);
+  debtTotalEl.innerHTML=`<span>Total owed today</span><span class="big">${eur(total)}</span>`;
+}
+
+let periods=[
+  {from:1,  to:8,  amount:3000},
+  {from:9,  to:20, amount:2000},
+  {from:21, to:56, amount:2500},
+];
+
+const periodsEl=document.getElementById('periods');
+function renderPeriods(){
+  periodsEl.innerHTML='';
+  periods.forEach((p,i)=>{
+    const d=document.createElement('div');
+    d.className='period';
+    const dur=p.to-p.from+1;
+    const bad=p.to<p.from;
+    d.innerHTML=`
+      <div class="idx">${String(i+1).padStart(2,'0')}</div>
+      <div class="field f-from">
+        <label>From month</label>
+        <input type="number" min="1" step="1" value="${p.from}" data-i="${i}" data-k="from">
+      </div>
+      <div class="field f-to">
+        <label>To month</label>
+        <input type="number" min="1" step="1" value="${p.to}" data-i="${i}" data-k="to">
+      </div>
+      <div class="field f-amt">
+        <label>Saved per month (€)</label>
+        <input type="number" min="0" step="50" value="${p.amount}" data-i="${i}" data-k="amount">
+      </div>
+      <button class="del" data-del="${i}" title="Remove">×</button>
+      <div class="span-note${bad?' bad':''}">${bad?'“To” must be on or after “from”':dur+' month'+(dur===1?'':'s')+' · '+eur0(dur*p.amount)+' set aside in this stretch'}</div>`;
+    periodsEl.appendChild(d);
+  });
+  periodsEl.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const i=+e.target.dataset.i,k=e.target.dataset.k;
+      periods[i][k]=parseFloat(e.target.value)||0;
+      compute();
+    });
+  });
+  periodsEl.querySelectorAll('.del').forEach(b=>{
+    b.addEventListener('click',e=>{
+      periods.splice(+e.target.dataset.del,1);
+      renderPeriods();compute();
+    });
+  });
+}
+document.getElementById('add').addEventListener('click',()=>{
+  const last=periods.length?Math.max(...periods.map(p=>p.to)):0;
+  periods.push({from:last+1,to:last+12,amount:1000});
+  renderPeriods();compute();
+});
+
+function debtRemainingSeries(){
+  // flat rule: each month, half of each loan's fixed payment reduces principal.
+  // returns array where index m-1 = total debt remaining AFTER month m's payment.
+  let loans=DEBTS.filter(d=>d.active).map(d=>({bal:d.bal, principal:d.pay*0.5}));
+  const series=[];
+  let m=0;
+  while(loans.some(l=>l.bal>0.005) && m<1200){
+    m++;
+    loans.forEach(l=>{
+      if(l.bal<=0)return;
+      l.bal-=l.principal;
+      if(l.bal<0)l.bal=0;
+    });
+    series.push(loans.reduce((s,l)=>s+l.bal,0));
+  }
+  return series;
+}
+
+function debtPayoffMonth(){
+  const s=debtRemainingSeries();
+  return s.length; // month all loans reach zero on the fixed schedule
+}
+
+function lastMonth(){
+  let m=0;
+  periods.forEach(p=>{if(p.to>=p.from&&p.to>m)m=p.to;});
+  return m;
+}
+function totalMonths(){return lastMonth();}
+
+function contribSchedule(){
+  // month-indexed contributions from month 1..lastMonth; overlaps sum, gaps are 0
+  const last=lastMonth();
+  const arr=new Array(last).fill(0);
+  periods.forEach(p=>{
+    if(p.to<p.from)return;
+    for(let m=p.from;m<=p.to;m++){
+      if(m>=1&&m<=last)arr[m-1]+=p.amount;
+    }
+  });
+  return arr;
+}
+
+function fvAtRate(annualPct){
+  const contrib=contribSchedule();
+  const r=annualPct/100/12;
+  const initial=parseFloat(document.getElementById('initial').value)||0;
+  let bal=initial, deposited=initial;
+  contrib.forEach(c=>{
+    bal=bal*(1+r)+c;
+    deposited+=c;
+  });
+  return {final:bal, deposited, gain:bal-deposited};
+}
+
+function crossoverAtRate(annualPct){
+  // walk month by month: grow the pot, shrink the debt (flat rule),
+  // find the first month where pot >= remaining debt.
+  const contrib=contribSchedule();       // monthly additions, may be shorter/longer than debt term
+  const debtSeries=debtRemainingSeries();// remaining debt after each month
+  const r=annualPct/100/12;
+  const initial=parseFloat(document.getElementById('initial').value)||0;
+  const horizon=Math.max(contrib.length, debtSeries.length);
+  let bal=initial;
+  for(let m=1;m<=horizon;m++){
+    bal=bal*(1+r)+(contrib[m-1]||0);
+    const debt = m<=debtSeries.length ? debtSeries[m-1] : 0;
+    if(bal>=debt){
+      return {month:m, pot:bal, debt};
+    }
+  }
+  // never caught up within the horizon
+  return {month:null, pot:bal, debt:debtSeries.length>horizon?debtSeries[horizon-1]:0};
+}
+
+const verdictEl=document.getElementById('verdict');
+const ratesEl=document.getElementById('rates');
+const payoffEl=document.getElementById('payoff');
+
+function fmtDur(m){
+  const y=Math.floor(m/12), mo=m%12;
+  return (y?y+' yr ':'')+mo+' mo';
+}
+
+function compute(){
+  const debtCleared=debtPayoffMonth(); // month debt hits zero on the fixed schedule alone
+
+  // Headline: use the fastest realistic rate the user listed that actually crosses.
+  // Show the earliest crossover across all rates for the verdict punch line.
+  let best=null;
+  RATES.forEach(rt=>{
+    const c=crossoverAtRate(rt);
+    if(c.month!==null && (best===null || c.month<best.month)) best={...c,rt};
+  });
+
+  if(best){
+    verdictEl.innerHTML=`
+      <div class="label">Lump-sum payoff point</div>
+      <div class="headline">At best, you can clear everything after <strong>${fmtDur(best.month)}</strong> — month ${best.month}, at a ${best.rt}% return.</div>
+      <div class="sub">Your pot reaches ${eur0(best.pot)} then, against ${eur0(best.debt)} of debt still owed. On the fixed payments alone the debt would otherwise take ${fmtDur(debtCleared)}. See every rate below.</div>`;
+  } else {
+    verdictEl.innerHTML=`
+      <div class="label">Lump-sum payoff point</div>
+      <div class="headline">Your pot doesn't overtake the debt within the months you've entered.</div>
+      <div class="sub">On the fixed payments alone the debt clears in ${fmtDur(debtCleared)}. Add more savings months or a higher amount to reach an earlier lump-sum payoff.</div>`;
+  }
+
+  // Payoff-point table
+  payoffEl.innerHTML=`<div class="rate-row rate-head">
+      <div>Return</div><div class="num">Payoff month</div><div class="num">Pot then</div><div class="num">Debt then</div>
+    </div>`;
+  RATES.forEach(rt=>{
+    const c=crossoverAtRate(rt);
+    const row=document.createElement('div');
+    row.className='rate-row';
+    if(best && rt===best.rt) row.classList.add('hl');
+    row.innerHTML=`
+      <div><span class="rate-tag">${rt}%</span></div>
+      <div class="num" data-l="Payoff month">${c.month!==null?('m'+c.month+' · '+fmtDur(c.month)):'—'}</div>
+      <div class="num final" data-l="Pot then">${eur0(c.pot)}</div>
+      <div class="num" data-l="Debt then" style="color:var(--danger)">${eur0(c.debt)}</div>`;
+    payoffEl.appendChild(row);
+  });
+
+  // Full-horizon value table
+  ratesEl.innerHTML=`<div class="rate-row rate-head">
+      <div>Return</div><div class="num">Invested</div><div class="num">Growth</div><div class="num">Ends at</div>
+    </div>`;
+  RATES.forEach(rt=>{
+    const {final,deposited,gain}=fvAtRate(rt);
+    const row=document.createElement('div');
+    row.className='rate-row';
+    row.innerHTML=`
+      <div><span class="rate-tag">${rt}%</span></div>
+      <div class="num" data-l="Invested">${eur0(deposited)}</div>
+      <div class="num gain" data-l="Growth">+${eur0(gain)}</div>
+      <div class="num final" data-l="Ends at">${eur0(final)}</div>`;
+    ratesEl.appendChild(row);
+  });
+}
+
+renderPeriods();
+renderDebts();
+document.getElementById('initial').addEventListener('input',compute);
+compute();
+</script>
+</body>
+</html>
