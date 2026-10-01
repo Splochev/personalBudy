@@ -26,7 +26,7 @@
     --trans:all 0.2s ease;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%;font-size:14px}
+  html{-webkit-text-size-adjust:100%;font-size:14px;color-scheme:dark}
   body{
     background:var(--bg);
     color:var(--text);
@@ -55,6 +55,14 @@
   .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
   .btn-ghost:hover{background:var(--surface3);color:var(--text)}
 
+  /* ── GATE / LOADING ── */
+  .gate{display:flex;align-items:center;justify-content:center;min-height:50vh;padding:40px 16px;text-align:center}
+  .gate-box{max-width:420px}
+  .gate-box h1{font-size:1.3rem;margin-bottom:10px}
+  .gate-box p{color:var(--text3);font-size:0.88rem;margin-bottom:18px}
+  .spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
   /* ── PAGE ── */
   .page-inner{max-width:1040px;margin:0 auto;padding:28px 16px 20px}
   .eyebrow{
@@ -73,28 +81,30 @@
   section{margin-bottom:40px}
   .section-desc{color:var(--text3);font-size:0.82rem;margin:-6px 0 16px}
 
-  /* ── DEBTS TABLE ── */
-  .debts{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  /* ── DEBTS ── */
+  .debts{display:flex;flex-direction:column;gap:10px}
   .debt-row{
-    background:var(--surface);display:flex;align-items:center;gap:12px;
-    padding:13px 16px;font-size:0.85rem;transition:var(--trans);
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+    display:flex;gap:12px;padding:14px 16px;transition:var(--trans);
   }
-  .debt-row.excluded{opacity:0.42}
+  .debt-row.excluded{opacity:0.45}
   .debt-row.excluded .name{text-decoration:line-through;color:var(--text3)}
-  .debt-head{background:var(--surface2);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;color:var(--text3)}
-  .chk,.chk-spacer{width:18px;height:18px;flex-shrink:0}
+  .chk{width:18px;height:18px;flex-shrink:0;margin-top:3px}
   .chk input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;display:block}
-  .debt-row-main{flex:1;min-width:0;display:grid;grid-template-columns:1.4fr 1fr 1fr .8fr;gap:12px;align-items:center}
-  .debt-row .name{font-weight:600}
-  .debt-row .num{font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
+  .debt-card{flex:1;min-width:0}
+  .debt-card-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:12px}
+  .debt-card .name{font-weight:700;font-size:0.9rem}
+  .debt-estimate{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent);font-size:0.95rem}
+  .debt-estimate-note{font-size:0.64rem;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-left:8px}
+  .debt-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .debt-total{
     background:var(--surface3);color:var(--text);
     display:flex;justify-content:space-between;align-items:baseline;
-    padding:16px;font-size:0.9rem;border-radius:var(--radius-sm);margin-top:1px;
+    padding:16px;font-size:0.9rem;border-radius:var(--radius-sm);
   }
   .debt-total .big{font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;color:var(--accent);font-weight:700}
 
-  /* ── PERIODS ── */
+  /* ── PERIODS / SHARED FIELD STYLES ── */
   .period{
     background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);
     border-radius:var(--radius-sm);padding:16px;margin-bottom:12px;
@@ -130,6 +140,12 @@
   .btn.ghost:hover{background:var(--accent-bg)}
   .controls{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 
+  /* ── SAVE STATUS ── */
+  .save-status{font-size:0.72rem;color:var(--text3);display:flex;align-items:center;gap:6px}
+  .save-status .dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+  .save-status.saving .dot{background:var(--gold)}
+  .save-status.saved .dot{background:var(--accent)}
+
   /* ── VERDICT ── */
   .verdict{
     background:var(--accent);color:#052e12;border-radius:var(--radius);
@@ -159,10 +175,7 @@
   .note{font-size:0.76rem;color:var(--text3);margin-top:16px;font-style:italic}
 
   @media(max-width:640px){
-    .debt-row-main{grid-template-columns:1fr 1fr;row-gap:6px}
-    .debt-row-main .name{grid-column:1/-1}
-    .debt-head{display:none}
-    .debt-row .num::before{content:attr(data-l);float:left;font-size:9px;text-transform:uppercase;color:var(--text3)}
+    .debt-fields{grid-template-columns:1fr 1fr}
     .period{grid-template-columns:auto 1fr 1fr auto;grid-template-areas:"idx a b del" "idx c c c" "note note note note"}
     .period .idx{grid-area:idx}
     .period .del{grid-area:del}
@@ -187,6 +200,7 @@
     Debt Freedom Calculator
   </div>
   <div class="topbar-sep"></div>
+  <span class="save-status" id="save-status"></span>
   <a href="index.html" class="btn-back btn-ghost" style="text-decoration:none">
     <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M3 12h18M3 12l9-9m-9 9l9 9" />
@@ -195,7 +209,22 @@
   </a>
 </div>
 
-<div class="page-inner">
+<div id="loading" class="gate">
+  <div class="gate-box">
+    <div class="spinner"></div>
+    <p>Loading your data…</p>
+  </div>
+</div>
+
+<div id="signin-gate" class="gate" style="display:none">
+  <div class="gate-box">
+    <h1>Sign in to use this tool</h1>
+    <p>Your debts, savings plan, and progress are saved to your PersonalBuddy account, so you need to be signed in first.</p>
+    <a href="index.html" class="btn" style="text-decoration:none;display:inline-block">Go to sign in</a>
+  </div>
+</div>
+
+<div class="page-inner" id="app" style="display:none">
 
 <div class="eyebrow">Personal Solvency · Projection Tool</div>
 <h1>The debt-freedom <em>ledger</em></h1>
@@ -203,25 +232,37 @@
 
 <section>
   <h2><span class="n">01</span> The debts you carry</h2>
-  <p class="section-desc">Untick a debt to exclude it from every calculation below — balance, monthly payment, and payoff schedule.</p>
+  <p class="section-desc">Untick a debt to exclude it from every calculation below. Balances update automatically between statements: each debt's "today's estimate" amortizes forward using its rate (interest = balance × monthly rate, the rest of the payment reduces principal) from the date you last confirmed it — update the balance and date whenever you get a new statement.</p>
   <div class="debts" id="debts"></div>
   <div class="debt-total" id="debt-total"></div>
 </section>
 
 <section>
   <h2><span class="n">02</span> What you already have</h2>
-  <p class="section-desc">Money already saved and invested today. It compounds from month one, before anything you add.</p>
+  <p class="section-desc">Money already invested today. It compounds from month one, before anything you add.</p>
   <div class="period" style="grid-template-columns:auto 1fr;align-items:end">
     <div class="idx">€</div>
     <div class="field">
-      <label>Starting balance (€)</label>
-      <input type="number" min="0" step="500" value="23000" id="initial">
+      <label>Starting balance, invested (€)</label>
+      <input type="number" min="0" step="500" value="0" id="initial">
     </div>
   </div>
 </section>
 
 <section>
-  <h2><span class="n">03</span> What you can set aside</h2>
+  <h2><span class="n">03</span> Money saved but not invested</h2>
+  <p class="section-desc">Cash on the side — a current account, an emergency fund, savings sitting idle. It doesn't grow, but it counts toward paying off the debt whenever you need it.</p>
+  <div class="period" style="grid-template-columns:auto 1fr;align-items:end">
+    <div class="idx">€</div>
+    <div class="field">
+      <label>Cash on hand (€)</label>
+      <input type="number" min="0" step="100" value="0" id="cash">
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">04</span> What you can set aside</h2>
   <p class="section-desc">Add a row for each stretch of time. Each says: from which month to which month (month 1 = now), and how much per month you can spare on top of the loan payments. Leave gaps if some months have nothing spare.</p>
   <div id="periods"></div>
   <div class="controls">
@@ -230,64 +271,159 @@
 </section>
 
 <section>
-  <h2><span class="n">04</span> When can you stop &amp; pay it off</h2>
+  <h2><span class="n">05</span> When can you stop &amp; pay it off</h2>
   <div class="verdict" id="verdict"></div>
-  <p class="section-desc">The moment your invested pot first grows big enough to clear the debt still remaining. From that month you could stop saving and wipe the balance in one payment. Faster returns reach it sooner.</p>
+  <p class="section-desc">The moment your invested pot — plus any cash on hand — first grows big enough to clear the debt still remaining. From that month you could stop saving and wipe the balance in one payment. Faster returns reach it sooner.</p>
   <div class="rate-grid" id="payoff"></div>
 
-  <h2 style="margin-top:36px"><span class="n">05</span> If instead you keep saving the whole time</h2>
-  <p class="section-desc">What the pot becomes if you run every savings period to the end, at each annual return, compounded monthly.</p>
+  <h2 style="margin-top:36px"><span class="n">06</span> If instead you keep saving the whole time</h2>
+  <p class="section-desc">What the pot becomes if you run every savings period to the end, at each annual return, compounded monthly, plus your uninvested cash.</p>
   <div class="rate-grid" id="rates"></div>
-  <p class="note">Debt model (your rule): each month, half of every loan's fixed payment reduces its principal; interest is treated as the other half and not modelled separately. Investment contributions and starting balance compound monthly. Figures are estimates — real returns vary and are not guaranteed. This is not financial advice.</p>
+  <p class="note">Debt model: standard reducing-balance amortization — each month, interest = balance × (rate ÷ 12), and whatever's left of the fixed payment reduces principal. Investment contributions and starting balance compound monthly; uninvested cash does not grow. Figures are estimates — real returns vary and are not guaranteed. This is not financial advice.</p>
 </section>
 
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import { sharedFirebaseConfig } from './js/firebase-config.js';
+import { debounce } from './js/shared-utils.js';
+
+const fbApp = initializeApp(sharedFirebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
 const DEBTS=[
-  {bal:7849.46, pay:88.39, rate:5.90, active:true},
-  {bal:29272.46, pay:197.26, rate:4.17, active:true},
-  {bal:64126.20, pay:271.78, rate:2.57, active:true},
-  {bal:82128.33, pay:368.69, rate:2.71, active:true},
+  {balance:7749.62,  asOf:'2026-09-15', pay:88.39,  rate:5.90, active:true},
+  {balance:29081.05, asOf:'2026-09-15', pay:197.26, rate:4.17, active:true},
+  {balance:63857.03, asOf:'2026-09-15', pay:271.78, rate:2.57, active:true},
+  {balance:81761.48, asOf:'2026-09-15', pay:368.69, rate:2.71, active:true},
 ];
 const RATES=[0,5,8,10,12];
+const LEGACY_STORAGE_KEY='personalbudy-debt-calculator';
 
 const eur=n=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' €';
 const eur0=n=>Math.round(n).toLocaleString('en-GB').replace(/,/g,' ')+' €';
 
+// whole months elapsed between an ISO "as of" date and today
+function monthsElapsed(asOf){
+  const from=new Date(asOf+'T00:00:00');
+  if(isNaN(from.getTime()))return 0;
+  const now=new Date();
+  let months=(now.getFullYear()-from.getFullYear())*12+(now.getMonth()-from.getMonth());
+  if(now.getDate()<from.getDate())months--;
+  return Math.max(0,months);
+}
+// today's estimated balance: half the monthly payment assumed to reduce principal each elapsed month
+// standard reducing-balance amortization: each month, interest = balance * monthly rate,
+// and whatever's left of the fixed payment reduces principal.
+function projectBalance(balance, pay, annualRatePct, months){
+  const r=annualRatePct/100/12;
+  let bal=balance;
+  for(let i=0;i<months;i++){
+    if(bal<=0)break;
+    const interest=bal*r;
+    const principal=Math.min(bal, Math.max(0, pay-interest));
+    bal-=principal;
+  }
+  return Math.max(0, bal);
+}
+function currentBalance(d){
+  return projectBalance(d.balance, d.pay, d.rate, monthsElapsed(d.asOf));
+}
+
+let uid=null;
+const saveStatusEl=document.getElementById('save-status');
+function setSaveStatus(state){
+  if(!saveStatusEl)return;
+  saveStatusEl.className='save-status'+(state?' '+state:'');
+  saveStatusEl.innerHTML=state ? `<span class="dot"></span>${state==='saving'?'Saving…':'Saved'}` : '';
+}
+
+async function loadState(){
+  if(!uid)return null;
+  try{
+    const snap=await getDoc(doc(db,'debtCalculators',uid));
+    if(snap.exists())return snap.data();
+  }catch(e){ console.error('load failed',e); }
+  // no cloud doc yet — migrate anything saved locally before this moved to Firestore
+  try{
+    const raw=localStorage.getItem(LEGACY_STORAGE_KEY);
+    if(raw)return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+const persist=debounce(async ()=>{
+  if(!uid)return;
+  setSaveStatus('saving');
+  try{
+    await setDoc(doc(db,'debtCalculators',uid),{
+      initial: parseFloat(document.getElementById('initial').value)||0,
+      cash: parseFloat(document.getElementById('cash').value)||0,
+      debts: DEBTS.map(d=>({balance:d.balance, asOf:d.asOf, pay:d.pay, rate:d.rate, active:d.active})),
+      periods,
+      updatedAt: Date.now(),
+    });
+    setSaveStatus('saved');
+  }catch(e){
+    console.error('save failed',e);
+    setSaveStatus('');
+  }
+},500);
+function saveState(){ persist(); }
+
 const debtsEl=document.getElementById('debts');
 const debtTotalEl=document.getElementById('debt-total');
+function updateDebtTotal(){
+  const total=DEBTS.filter(d=>d.active).reduce((s,d)=>s+currentBalance(d),0);
+  debtTotalEl.innerHTML=`<span>Total owed today</span><span class="big">${eur(total)}</span>`;
+}
+function updateDebtField(i,k,value){
+  if(k==='asOf')DEBTS[i].asOf=value;
+  else DEBTS[i][k]=parseFloat(value)||0;
+}
 function renderDebts(){
-  debtsEl.innerHTML=`<div class="debt-row debt-head">
-      <div class="chk-spacer"></div>
-      <div class="debt-row-main"><div>Loan</div><div class="num">Balance</div><div class="num">Monthly</div><div class="num">Rate</div></div>
-    </div>` +
-    DEBTS.map((d,i)=>`
-      <div class="debt-row${d.active?'':' excluded'}">
-        <label class="chk"><input type="checkbox" data-i="${i}" ${d.active?'checked':''}></label>
-        <div class="debt-row-main">
-          <div class="name">Debt ${i+1}</div>
-          <div class="num" data-l="Balance">${eur(d.bal)}</div>
-          <div class="num" data-l="Monthly">${eur(d.pay)}</div>
-          <div class="num" data-l="Rate">${d.rate.toFixed(2)} %</div>
+  debtsEl.innerHTML=DEBTS.map((d,i)=>`
+    <div class="debt-row${d.active?'':' excluded'}">
+      <label class="chk"><input type="checkbox" data-i="${i}" ${d.active?'checked':''}></label>
+      <div class="debt-card">
+        <div class="debt-card-head">
+          <span class="name">Debt ${i+1}</span>
+          <span><span class="debt-estimate" id="debt-estimate-${i}">${eur(currentBalance(d))}</span><span class="debt-estimate-note">today's estimate</span></span>
         </div>
-      </div>`).join('');
+        <div class="debt-fields">
+          <div class="field"><label>Balance (€)</label><input type="number" min="0" step="0.01" value="${d.balance}" data-i="${i}" data-k="balance"></div>
+          <div class="field"><label>As of</label><input type="date" value="${d.asOf}" data-i="${i}" data-k="asOf"></div>
+          <div class="field"><label>Monthly (€)</label><input type="number" min="0" step="0.01" value="${d.pay}" data-i="${i}" data-k="pay"></div>
+          <div class="field"><label>Rate (%)</label><input type="number" min="0" step="0.01" value="${d.rate}" data-i="${i}" data-k="rate"></div>
+        </div>
+      </div>
+    </div>`).join('');
   debtsEl.querySelectorAll('.chk input').forEach(inp=>{
     inp.addEventListener('change',e=>{
       DEBTS[+e.target.dataset.i].active=e.target.checked;
       renderDebts();
       compute();
+      saveState();
     });
   });
-  const total=DEBTS.filter(d=>d.active).reduce((s,d)=>s+d.bal,0);
-  debtTotalEl.innerHTML=`<span>Total owed today</span><span class="big">${eur(total)}</span>`;
+  debtsEl.querySelectorAll('.debt-fields input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const i=+e.target.dataset.i,k=e.target.dataset.k;
+      updateDebtField(i,k,e.target.value);
+      const est=document.getElementById('debt-estimate-'+i);
+      if(est)est.textContent=eur(currentBalance(DEBTS[i]));
+      updateDebtTotal();
+      compute();
+      saveState();
+    });
+  });
+  updateDebtTotal();
 }
 
-let periods=[
-  {from:1,  to:8,  amount:3000},
-  {from:9,  to:20, amount:2000},
-  {from:21, to:56, amount:2500},
-];
+let periods=[];
 
 const periodsEl=document.getElementById('periods');
 function renderPeriods(){
@@ -320,32 +456,37 @@ function renderPeriods(){
       const i=+e.target.dataset.i,k=e.target.dataset.k;
       periods[i][k]=parseFloat(e.target.value)||0;
       compute();
+      saveState();
     });
   });
   periodsEl.querySelectorAll('.del').forEach(b=>{
     b.addEventListener('click',e=>{
       periods.splice(+e.target.dataset.del,1);
-      renderPeriods();compute();
+      renderPeriods();compute();saveState();
     });
   });
 }
 document.getElementById('add').addEventListener('click',()=>{
   const last=periods.length?Math.max(...periods.map(p=>p.to)):0;
   periods.push({from:last+1,to:last+12,amount:1000});
-  renderPeriods();compute();
+  renderPeriods();compute();saveState();
 });
 
 function debtRemainingSeries(){
-  // flat rule: each month, half of each loan's fixed payment reduces principal.
+  // reducing-balance amortization: each month, interest = balance * monthly rate,
+  // the rest of the fixed payment reduces principal.
+  // starts from today's projected balance, not the raw last-confirmed figure.
   // returns array where index m-1 = total debt remaining AFTER month m's payment.
-  let loans=DEBTS.filter(d=>d.active).map(d=>({bal:d.bal, principal:d.pay*0.5}));
+  let loans=DEBTS.filter(d=>d.active).map(d=>({bal:currentBalance(d), pay:d.pay, r:d.rate/100/12}));
   const series=[];
   let m=0;
   while(loans.some(l=>l.bal>0.005) && m<1200){
     m++;
     loans.forEach(l=>{
       if(l.bal<=0)return;
-      l.bal-=l.principal;
+      const interest=l.bal*l.r;
+      const principal=Math.min(l.bal, Math.max(0, l.pay-interest));
+      l.bal-=principal;
       if(l.bal<0)l.bal=0;
     });
     series.push(loans.reduce((s,l)=>s+l.bal,0));
@@ -382,32 +523,34 @@ function fvAtRate(annualPct){
   const contrib=contribSchedule();
   const r=annualPct/100/12;
   const initial=parseFloat(document.getElementById('initial').value)||0;
+  const cash=parseFloat(document.getElementById('cash').value)||0;
   let bal=initial, deposited=initial;
   contrib.forEach(c=>{
     bal=bal*(1+r)+c;
     deposited+=c;
   });
-  return {final:bal, deposited, gain:bal-deposited};
+  return {final:bal+cash, deposited:deposited+cash, gain:bal-deposited};
 }
 
 function crossoverAtRate(annualPct){
   // walk month by month: grow the pot, shrink the debt (flat rule),
-  // find the first month where pot >= remaining debt.
+  // find the first month where pot (plus uninvested cash) >= remaining debt.
   const contrib=contribSchedule();       // monthly additions, may be shorter/longer than debt term
   const debtSeries=debtRemainingSeries();// remaining debt after each month
   const r=annualPct/100/12;
   const initial=parseFloat(document.getElementById('initial').value)||0;
+  const cash=parseFloat(document.getElementById('cash').value)||0;
   const horizon=Math.max(contrib.length, debtSeries.length);
   let bal=initial;
   for(let m=1;m<=horizon;m++){
     bal=bal*(1+r)+(contrib[m-1]||0);
     const debt = m<=debtSeries.length ? debtSeries[m-1] : 0;
-    if(bal>=debt){
-      return {month:m, pot:bal, debt};
+    if(bal+cash>=debt){
+      return {month:m, pot:bal+cash, debt};
     }
   }
   // never caught up within the horizon
-  return {month:null, pot:bal, debt:debtSeries.length>horizon?debtSeries[horizon-1]:0};
+  return {month:null, pot:bal+cash, debt:debtSeries.length>horizon?debtSeries[horizon-1]:0};
 }
 
 const verdictEl=document.getElementById('verdict');
@@ -476,10 +619,38 @@ function compute(){
   });
 }
 
-renderPeriods();
-renderDebts();
-document.getElementById('initial').addEventListener('input',compute);
-compute();
+async function boot(){
+  const saved=await loadState();
+  if(saved){
+    if(Array.isArray(saved.debts)){
+      saved.debts.forEach((sd,i)=>{ if(DEBTS[i])Object.assign(DEBTS[i],sd); });
+    } else if(Array.isArray(saved.debtsActive)){
+      // legacy localStorage shape — only the active flags were ever stored
+      DEBTS.forEach((d,i)=>{ if(typeof saved.debtsActive[i]==='boolean')d.active=saved.debtsActive[i]; });
+    }
+    if(Array.isArray(saved.periods))periods=saved.periods;
+    if(typeof saved.initial==='number')document.getElementById('initial').value=saved.initial;
+    if(typeof saved.cash==='number')document.getElementById('cash').value=saved.cash;
+  }
+
+  renderPeriods();
+  renderDebts();
+  document.getElementById('initial').addEventListener('input',()=>{compute();saveState();});
+  document.getElementById('cash').addEventListener('input',()=>{compute();saveState();});
+  compute();
+  saveState(); // persist once so a migrated/legacy state is captured in Firestore right away
+}
+
+onAuthStateChanged(auth, user=>{
+  document.getElementById('loading').style.display='none';
+  if(!user){
+    document.getElementById('signin-gate').style.display='flex';
+    return;
+  }
+  uid=user.uid;
+  document.getElementById('app').style.display='block';
+  boot();
+});
 </script>
 </body>
 </html>

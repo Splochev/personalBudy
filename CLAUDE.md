@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No build step, no npm.** Pure HTML/CSS/JS only. All dependencies are loaded from CDN.
 - **Alpine.js v3** loaded as an ES module from `https://cdn.jsdelivr.net/npm/alpinejs@3/dist/module.esm.js`.
 - **Firebase JS SDK v12** loaded from `https://www.gstatic.com/firebasejs/12.12.1/` via CDN imports.
-- **Firebase Auth only** in this repo. No Firestore reads or writes happen here — the hub only authenticates.
+- **Firebase Auth only** for most of this repo. The hub (`index.html`) only authenticates — it does not read or write Firestore. **Exception:** `debt-calculator.html` reads/writes Firestore for its own data (see "Debt Calculator" below) — it is the one page in this repo with a Firestore dependency.
 - **Hosted on GitHub Pages** at `https://splochev.github.io/personalBudy/`. No server-side code.
-- The five standalone tool pages (`catan.html`, `yu-gi-oh.html`, `card-translator.html`, `tax-aggregator.html`, `debt-calculator.html`) use **zero Firebase** and are fully self-contained.
+- Four standalone tool pages (`catan.html`, `yu-gi-oh.html`, `card-translator.html`, `tax-aggregator.html`) use **zero Firebase** and are fully self-contained. `debt-calculator.html` is *not* in this group — it requires sign-in and Firestore (see below).
 
 ## Dual Role: Hub + Shared Infrastructure
 
@@ -84,9 +84,24 @@ App card order in the dashboard grid:
 | `yu-gi-oh.html` | Life points counter for Yu-Gi-Oh! duels; mobile-optimized, has PWA manifest (`manifest.ygo.json`) | Vanilla JS |
 | `card-translator.html` | Upload card images, add translated text, generate a printable PDF | Calls local Ollama API (`http://localhost:11434`) |
 | `tax-aggregator.html` | Parses Trading 212 CSV exports and generates Bulgarian NAP tax reports | CSV parsing, vanilla JS |
-| `debt-calculator.html` | Models fixed loan payoff against a savings/investment plan; finds the month a compounding pot could clear remaining debt | Vanilla JS, compound-interest projections |
 
-All five share the same CSS design tokens (`--bg`, `--surface`, `--accent`, etc.) defined inline in each file.
+All four share the same CSS design tokens (`--bg`, `--surface`, `--accent`, etc.) defined inline in each file. `debt-calculator.html` uses the same visual design tokens but is **not** Firebase-free — see below.
+
+## Debt Calculator (`debt-calculator.html`) — Firebase Auth + Firestore
+
+Unlike the other standalone tools, this page requires sign-in and persists its data to Firestore instead of being self-contained:
+
+- **Auth-gated**: on load it waits on `onAuthStateChanged`; signed-out visitors see a "Sign in" gate linking back to `index.html` (relies on the SSO mechanism above — most users arrive already signed in via the hub). There is no login form on this page itself.
+- **Firestore schema**: one document per user at `debtCalculators/{uid}`, containing `{ initial, cash, debts: [{ balance, asOf, pay, rate, active }, ...], periods: [{ from, to, amount }, ...], updatedAt }`.
+- **Auto-projected balances**: each debt stores the balance *as of* a given date rather than a live figure. The page projects today's estimated balance as `balance - (pay * 0.5 * monthsElapsedSince(asOf))`, floored at 0 — the same "half the payment is principal" rule used for the payoff schedule. Update `balance`/`asOf` whenever a new statement comes in; the estimate keeps decaying automatically between updates.
+- **Writes are debounced** (~500ms, via the shared `debounce` util) and fire on every field change.
+- **One-time local→cloud migration**: if a signed-in user has no Firestore doc yet, the page falls back to reading the old `localStorage` key (`personalbudy-debt-calculator`) so earlier local data isn't silently lost, then immediately persists it to Firestore.
+- **Security rule required** (not deployed from this repo — there's no `firestore.rules` file here; apply it directly in the Firebase console for project `personalbudy-2f735`):
+  ```
+  match /debtCalculators/{uid} {
+    allow read, write: if request.auth != null && request.auth.uid == uid;
+  }
+  ```
 
 ## Shared Infrastructure Contract
 
