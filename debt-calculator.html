@@ -145,6 +145,8 @@
   .save-status .dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
   .save-status.saving .dot{background:var(--gold)}
   .save-status.saved .dot{background:var(--accent)}
+  .save-status.local-only{color:var(--danger)}
+  .save-status.local-only .dot{background:var(--danger)}
 
   /* ── VERDICT ── */
   .verdict{
@@ -302,7 +304,7 @@ const DEBTS=[
   {balance:81761.48, asOf:'2026-09-15', pay:368.69, rate:2.71, active:true},
 ];
 const RATES=[0,5,8,10,12];
-const LEGACY_STORAGE_KEY='personalbudy-debt-calculator';
+const LOCAL_KEY='personalbudy-debt-calculator';
 
 const eur=n=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' €';
 const eur0=n=>Math.round(n).toLocaleString('en-GB').replace(/,/g,' ')+' €';
@@ -339,37 +341,52 @@ const saveStatusEl=document.getElementById('save-status');
 function setSaveStatus(state){
   if(!saveStatusEl)return;
   saveStatusEl.className='save-status'+(state?' '+state:'');
-  saveStatusEl.innerHTML=state ? `<span class="dot"></span>${state==='saving'?'Saving…':'Saved'}` : '';
+  const labels={saving:'Saving…', saved:'Saved', 'local-only':'Saved on this device only (cloud sync failed)'};
+  saveStatusEl.innerHTML=state ? `<span class="dot"></span>${labels[state]||''}` : '';
+}
+function readLocal(){
+  try{
+    const raw=localStorage.getItem(LOCAL_KEY);
+    return raw?JSON.parse(raw):null;
+  }catch(e){ return null; }
+}
+function writeLocal(state){
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }catch(e){}
 }
 
 async function loadState(){
-  if(!uid)return null;
-  try{
-    const snap=await getDoc(doc(db,'debtCalculators',uid));
-    if(snap.exists())return snap.data();
-  }catch(e){ console.error('load failed',e); }
-  // no cloud doc yet — migrate anything saved locally before this moved to Firestore
-  try{
-    const raw=localStorage.getItem(LEGACY_STORAGE_KEY);
-    if(raw)return JSON.parse(raw);
-  }catch(e){}
-  return null;
+  const local=readLocal();
+  let cloud=null;
+  if(uid){
+    try{
+      const snap=await getDoc(doc(db,'users',uid,'debtCalculator','state'));
+      if(snap.exists())cloud=snap.data();
+    }catch(e){ console.error('cloud load failed',e); }
+  }
+  // whichever copy is newer wins — this also covers the one-time migration
+  // from before this page saved to Firestore at all (local has no updatedAt yet, cloud does).
+  if(cloud && local)return (local.updatedAt||0)>(cloud.updatedAt||0) ? local : cloud;
+  return cloud || local;
 }
 const persist=debounce(async ()=>{
+  const state={
+    initial: parseFloat(document.getElementById('initial').value)||0,
+    cash: parseFloat(document.getElementById('cash').value)||0,
+    debts: DEBTS.map(d=>({balance:d.balance, asOf:d.asOf, pay:d.pay, rate:d.rate, active:d.active})),
+    periods,
+    updatedAt: Date.now(),
+  };
+  // always keep a local copy first — so a Firestore outage or a missing
+  // security rule never costs you data, only cloud sync.
+  writeLocal(state);
   if(!uid)return;
   setSaveStatus('saving');
   try{
-    await setDoc(doc(db,'debtCalculators',uid),{
-      initial: parseFloat(document.getElementById('initial').value)||0,
-      cash: parseFloat(document.getElementById('cash').value)||0,
-      debts: DEBTS.map(d=>({balance:d.balance, asOf:d.asOf, pay:d.pay, rate:d.rate, active:d.active})),
-      periods,
-      updatedAt: Date.now(),
-    });
+    await setDoc(doc(db,'users',uid,'debtCalculator','state'), state);
     setSaveStatus('saved');
   }catch(e){
-    console.error('save failed',e);
-    setSaveStatus('');
+    console.error('cloud save failed — check the Firestore security rule for users/{uid}/debtCalculator/state',e);
+    setSaveStatus('local-only');
   }
 },500);
 function saveState(){ persist(); }

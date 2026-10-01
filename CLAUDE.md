@@ -92,14 +92,14 @@ All four share the same CSS design tokens (`--bg`, `--surface`, `--accent`, etc.
 Unlike the other standalone tools, this page requires sign-in and persists its data to Firestore instead of being self-contained:
 
 - **Auth-gated**: on load it waits on `onAuthStateChanged`; signed-out visitors see a "Sign in" gate linking back to `index.html` (relies on the SSO mechanism above — most users arrive already signed in via the hub). There is no login form on this page itself.
-- **Firestore schema**: one document per user at `debtCalculators/{uid}`, containing `{ initial, cash, debts: [{ balance, asOf, pay, rate, active }, ...], periods: [{ from, to, amount }, ...], updatedAt }`.
-- **Auto-projected balances**: each debt stores the balance *as of* a given date rather than a live figure. The page projects today's estimated balance as `balance - (pay * 0.5 * monthsElapsedSince(asOf))`, floored at 0 — the same "half the payment is principal" rule used for the payoff schedule. Update `balance`/`asOf` whenever a new statement comes in; the estimate keeps decaying automatically between updates.
+- **Firestore schema**: one document per user at `users/{uid}/debtCalculator/state` — this follows the same `users/{uid}/<subcollection>/<doc>` convention the other buddy apps already use (`weightSettings/settings`, `settings/{docId}` under BudgetBudy, etc.), not a new top-level collection. Document shape: `{ initial, cash, debts: [{ balance, asOf, pay, rate, active }, ...], periods: [{ from, to, amount }, ...], updatedAt }`.
+- **Auto-projected balances**: each debt stores the balance *as of* a given date rather than a live figure. The page amortizes it forward with `projectBalance()` — standard reducing-balance math (`interest = balance * rate/12`, the rest of the fixed payment reduces principal), floored at 0 — the same model used for the payoff schedule. Update `balance`/`asOf` whenever a new statement comes in; the estimate keeps decaying automatically between updates (and only on the actual billing day of the month, since the projection compares day-of-month against `asOf`).
 - **Writes are debounced** (~500ms, via the shared `debounce` util) and fire on every field change.
-- **One-time local→cloud migration**: if a signed-in user has no Firestore doc yet, the page falls back to reading the old `localStorage` key (`personalbudy-debt-calculator`) so earlier local data isn't silently lost, then immediately persists it to Firestore.
-- **Security rule required** (not deployed from this repo — there's no `firestore.rules` file here; apply it directly in the Firebase console for project `personalbudy-2f735`):
+- **Local write is not just a migration fallback — it's permanent and unconditional.** Every `persist()` call writes to `localStorage` (key `personalbudy-debt-calculator`) *before* attempting the Firestore write, regardless of whether the user is signed in or the cloud write succeeds. `loadState()` reads both the Firestore doc and the local copy and keeps whichever has the newer `updatedAt`. This means a missing/incorrect security rule degrades to "saved on this device only" (surfaced via the save-status indicator in the topbar turning red) instead of silently losing data.
+- **Security rule required** — this repo has no `firestore.rules` file; the shared rules live wherever the Firebase project's rules are actually deployed from (apply directly in the Firebase console for project `personalbudy-2f735`, or in whichever sub-app repo owns the canonical rules file). Add this nested inside the existing `match /users/{uid} { ... }` block, alongside `workoutLogs`, `weightSettings`, etc.:
   ```
-  match /debtCalculators/{uid} {
-    allow read, write: if request.auth != null && request.auth.uid == uid;
+  match /debtCalculator/{docId} {
+    allow read, write: if (request.auth != null && request.auth.uid == uid) || isAdmin();
   }
   ```
 
