@@ -390,7 +390,34 @@
         padding: 2px 8px; border-radius: 10px;
       }
       .nap-hint { font-size: 0.75rem; color: var(--text3); margin: 4px 0 6px; }
-      .nap-title { font-size: 0.8125rem; font-weight: 700; color: var(--text2); margin: 18px 0 8px; }
+      /* ── ACCORDIONS ──────────────────────────────────────────────────── */
+      details.acc { margin: 14px 0 0; }
+      details.acc.section { margin-bottom: 16px; }
+      details.acc > summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--text2);
+        user-select: none;
+        transition: var(--trans);
+      }
+      details.acc > summary::-webkit-details-marker { display: none; }
+      details.acc > summary::before {
+        content: '▸';
+        color: var(--accent);
+        font-size: 0.875rem;
+        transition: transform 0.15s ease;
+      }
+      details.acc[open] > summary::before { transform: rotate(90deg); }
+      details.acc > summary:hover { color: var(--text); }
+      details.acc[open] > summary { margin-bottom: 10px; }
+      details.acc.section > summary { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); }
       .nap-note { font-size: 0.75rem; color: var(--text3); margin: 8px 0 4px; }
       .nap-note strong { color: var(--text); }
       .nap-table thead th {
@@ -814,7 +841,7 @@
             </div>`;
       };
 
-      let html = `<div class="warn">ℹ️ Курсовете са на Trading 212 — НАП изисква курса на БНБ към датата на сделката, разликите обикновено са минимални.</div>`;
+      let html = `<details class="acc section"><summary>ℹ️ Бележки</summary><div class="warn">Курсовете са на Trading 212 — НАП изисква курса на БНБ към датата на сделката, разликите обикновено са минимални.</div></details>`;
       if (missingHistory.size) {
         html += `<div class="warn">⚠️ Липсват покупки за: ${[...missingHistory].join(", ")} — качете и по-старите CSV файлове. За тези продажби е използван Result от Trading 212.</div>`;
       }
@@ -832,16 +859,16 @@
 
         // Приложение 5, Таблица 2 — облагаеми
         html += `
-          <div class="section">
-            <div class="section-title">Разбивка по тикери — продажби <span class="section-badge">детайли</span></div>
+          <details class="acc section">
+            <summary>Разбивка по тикери — продажби <span class="section-badge">детайли</span></summary>
             ${Object.keys(yd.taxable).length ? dealsTable(yd.taxable, y) : '<p class="empty-text">Няма облагаеми продажби.</p>'}
-          </div>`;
+          </details>`;
 
         // Дивиденти
         if (yd.dividends.length) {
           html += `
-          <div class="section">
-            <div class="section-title">Разбивка — дивиденти <span class="section-badge">детайли</span></div>
+          <details class="acc section">
+            <summary>Разбивка — дивиденти <span class="section-badge">детайли</span></summary>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -870,14 +897,14 @@
                 </tbody>
               </table>
             </div>
-          </div>`;
+          </details>`;
         }
 
         // Приложение 8, Част I — притежавани акции
         const holdings = yd.holdings;
         html += `
-          <div class="section">
-            <div class="section-title">Разбивка — акции към ${asOf} <span class="section-badge">детайли</span></div>
+          <details class="acc section">
+            <summary>Разбивка — акции към ${asOf} <span class="section-badge">детайли</span></summary>
             ${holdings.length === 0 ? '<p class="empty-text">Няма налични позиции в края на годината.</p>' : `
             <div class="table-wrap">
               <table>
@@ -907,7 +934,7 @@
                 </tbody>
               </table>
             </div>`}
-          </div>`;
+          </details>`;
 
         html += '</div>'; // year-block
       });
@@ -961,7 +988,7 @@
           </div>
           <div class="nap-hint">Кликнете върху стойност, за да я копирате.</div>
 
-          <div class="nap-title">Приложение № 5 — Таблица 2</div>
+          <details class="acc" open><summary>Приложение № 5 — Таблица 2</summary>
           ${!s.hasDeals ? '<p class="empty-text">Няма продажби — Приложение 5 не е нужно за тази година.</p>' : `
           <div class="table-wrap">
             <table class="nap-table">
@@ -979,8 +1006,9 @@
             </table>
           </div>
           <div class="nap-note">Попълвате само ред 1.1. Редове 4–7 порталът изчислява сам — проверете, че съвпадат.</div>
+          </details>
 
-          <div class="nap-title">Приложение № 5 — Част II</div>
+          <details class="acc" open><summary>Приложение № 5 — Част II</summary>
           <div class="table-wrap">
             <table class="nap-table">
               <tbody>
@@ -994,17 +1022,19 @@
           <div class="nap-note">
             В Част IV на декларацията ред 4001 става годишната основа от Приложение 1 + <strong>${fmtNum(s.row7)}</strong>.
             Данъкът от сделките е 10% от ред 7 ≈ <strong>${amount(s.dealsTax, y)}</strong>.
-          </div>`}`;
+          </div>`}
+          </details>`;
 
       if (!s.holdRows.length && !s.divRows.length) {
         out += `
-          <div class="nap-title">Приложение № 8</div>
-          <p class="empty-text">Не е нужно — към ${asOf} няма притежавани акции и няма получени дивиденти.</p>`;
+          <details class="acc" open><summary>Приложение № 8</summary>
+          <p class="empty-text">Не е нужно — към ${asOf} няма притежавани акции и няма получени дивиденти.</p>
+          </details>`;
       }
 
       if (s.holdRows.length) {
         out += `
-          <div class="nap-title">Приложение № 8 — Част I (акции към ${asOf})</div>
+          <details class="acc" open><summary>Приложение № 8 — Част I (акции към ${asOf})</summary>
           <div class="table-wrap">
             <table class="nap-table">
               <thead>
@@ -1024,12 +1054,13 @@
               </tbody>
             </table>
           </div>
-          <div class="nap-note">Датата е първата покупка на позицията, която все още държите.</div>`;
+          <div class="nap-note">Датата е първата покупка на позицията, която все още държите.</div>
+          </details>`;
       }
 
       if (s.divRows.length) {
         out += `
-          <div class="nap-title">Приложение № 8 — Част III (дивиденти)</div>
+          <details class="acc" open><summary>Приложение № 8 — Част III (дивиденти)</summary>
           <div class="table-wrap">
             <table class="nap-table">
               <thead>
@@ -1053,7 +1084,8 @@
               </tbody>
             </table>
           </div>
-          <div class="nap-note">Колони 7 и 8 остават празни. Колони 10–12 порталът изчислява сам.</div>`;
+          <div class="nap-note">Колони 7 и 8 остават празни. Колони 10–12 порталът изчислява сам.</div>
+          </details>`;
       }
 
       return out + '</div>';
