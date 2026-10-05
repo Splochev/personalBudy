@@ -491,6 +491,9 @@
     // ── Constants ──────────────────────────────────────────────────────────
     const EURO_TO_BGN = 1.95583;
     const DEBUG = false;
+    const FALLBACK_RATES = { USD: 1.10, GBP: 0.86 };
+    const BUY_ACTIONS  = new Set(['Market buy', 'Limit buy', 'Stop buy', 'Stop limit buy']);
+    const SELL_ACTIONS = new Set(['Market sell', 'Limit sell', 'Stop sell', 'Stop limit sell']);
 
     // ── DOM refs ───────────────────────────────────────────────────────────
     const fileInput    = document.getElementById('fileInput');
@@ -521,305 +524,176 @@
       document.getElementById('fileNames').textContent = files.map(f => f.name).join(', ');
       document.getElementById('fileBadge').style.display = 'inline-flex';
 
-      let header = null, data = [];
+      // Every T212 export has its own column layout (columns are added/reordered between
+      // years), so map each row by its own file's header and merge into one header.
+      const header = [];
+      const data = [];
+      const seen = new Set();
       for (const f of files) {
-        const txt = await f.text();
-        const rows = parseCSV(txt);
-        if (!header) header = rows[0];
-        data = data.concat(rows.slice(1));
+        const rows = parseCSV(await f.text());
+        const fileHeader = rows[0].map(h => h.trim());
+        fileHeader.forEach(h => { if (h && !header.includes(h)) header.push(h); });
+        rows.slice(1).forEach(r => {
+          if (r.length < 2) return;
+          const obj = {};
+          fileHeader.forEach((h, i) => { obj[h] = (r[i] ?? '').trim(); });
+          const key = obj.ID || r.join(',');
+          if (seen.has(key)) return; // overlapping exports
+          seen.add(key);
+          data.push(obj);
+        });
       }
 
-      const timeIdx = header.indexOf('Time');
-      if (timeIdx >= 0) {
-        data.sort((a, b) =>
-          new Date(a[timeIdx]?.replace(' ', 'T') || '') -
-          new Date(b[timeIdx]?.replace(' ', 'T') || ''));
-      }
+      const TIME   = header.includes('Time (UTC)') ? 'Time (UTC)' : 'Time';
+      const num    = v => parseFloat(String(v || '').replace(',', '.')) || 0;
+      const dayOf  = r => (r[TIME] || '').slice(0, 10);
+      const yearOf = r => parseInt((r[TIME] || '').slice(0, 4), 10);
+      data.sort((a, b) => (a[TIME] || '').localeCompare(b[TIME] || ''));
 
-      const idx = name => header.indexOf(name);
-
-      const dailyUsdRate = {};
+      // Daily "units of currency per 1 EUR", taken from T212's own rates on trades booked
+      // in a BGN/EUR account (there Exchange rate = price currency per account currency).
+      const dailyRates = {};
       data.forEach(r => {
-        const cur = (r[idx('Currency (Price / share)')] || '').trim();
-        const totalCur = (r[idx('Currency (Total)')] || '').trim();
-        const exRate = parseFloat((r[idx('Exchange rate')] || '1').replace(',', '.'));
-        const t = r[idx('Time')] || '';
-        const day = t.split(' ')[0];
-        if (!day) return;
-        if (cur === 'USD' && totalCur === 'EUR' && exRate && exRate > 0.5 && exRate < 5) {
-          dailyUsdRate[day] = exRate;
-        }
+        if (!BUY_ACTIONS.has(r.Action) && !SELL_ACTIONS.has(r.Action)) return;
+        let cur = r['Currency (Price / share)'];
+        const acc = r['Currency (Total)'];
+        let rate = num(r['Exchange rate']);
+        if (!rate || (acc !== 'EUR' && acc !== 'BGN')) return;
+        if (cur === 'GBX') { cur = 'GBP'; rate /= 100; }
+        if (cur === 'EUR' || cur === 'BGN') return;
+        if (acc === 'BGN') rate *= EURO_TO_BGN;
+        (dailyRates[cur] = dailyRates[cur] || {})[dayOf(r)] = rate;
       });
-
-      const rateEntries = Object.entries(dailyUsdRate)
-        .map(([d, r]) => [new Date(d).getTime(), r])
-        .sort((a, b) => a[0] - b[0]);
-
-      function getNearestUsdRate(dateStr) {
-        if (!rateEntries.length) return 1.10;
-        const t = new Date(dateStr).getTime();
-        let best = rateEntries[0][1];
-        let bestDist = Math.abs(t - rateEntries[0][0]);
-        for (const [ts, rate] of rateEntries) {
-          const dist = Math.abs(t - ts);
-          if (dist < bestDist) { bestDist = dist; best = rate; }
-        }
-        return best;
-      }
-
-      const dailyGbpRate = {};
-      data.forEach(r => {
-        const cur = (r[idx('Currency (Price / share)')] || '').trim();
-        const totalCur = (r[idx('Currency (Total)')] || '').trim();
-        const exRate = parseFloat((r[idx('Exchange rate')] || '1').replace(',', '.'));
-        const t = r[idx('Time')] || '';
-        const day = t.split(' ')[0];
-        if (!day) return;
-        if ((cur === 'GBX' || cur === 'GBP') && totalCur === 'EUR' && exRate > 50 && exRate < 200) {
-          dailyGbpRate[day] = exRate;
-        }
+      const rateEntries = {};
+      Object.entries(dailyRates).forEach(([cur, m]) => {
+        rateEntries[cur] = Object.entries(m).map(([d, v]) => [Date.parse(d), v]);
       });
-      const gbpRateEntries = Object.entries(dailyGbpRate)
-        .map(([d, r]) => [new Date(d).getTime(), r])
-        .sort((a, b) => a[0] - b[0]);
-      function getNearestGbpRate(dateStr, isGBX) {
-        const fallback = isGBX ? 86 : 0.86;
-        if (!gbpRateEntries.length) return fallback;
-        const t = new Date(dateStr).getTime();
-        let best = gbpRateEntries[0][1]; let bestDist = Math.abs(t - gbpRateEntries[0][0]);
-        for (const [ts, rate] of gbpRateEntries) {
-          const dist = Math.abs(t - ts);
-          if (dist < bestDist) { bestDist = dist; best = rate; }
-        }
-        return best;
-      }
-
-      const conversionWarnings = [];
-
-      const toEUR = (amount, cur, exRate, day) => {
-        if (cur === 'EUR') return amount;
+      const missingRates = new Set();
+      const ratePerEUR = (cur, day) => {
+        const list = rateEntries[cur];
+        if (!list || !list.length) { missingRates.add(cur); return FALLBACK_RATES[cur] || 1; }
+        const t = Date.parse(day);
+        let best = list[0];
+        for (const e of list) if (Math.abs(e[0] - t) < Math.abs(best[0] - t)) best = e;
+        return best[1];
+      };
+      const toEUR = (amount, cur, day) => {
+        if (!amount || !cur || cur === 'EUR') return amount;
         if (cur === 'BGN') return amount / EURO_TO_BGN;
-        if (cur === 'USD') {
-          const rate = (exRate > 0.5 && exRate < 5 && exRate !== 1.0)
-            ? exRate : getNearestUsdRate(day);
-          return amount / rate;
-        }
-        if (cur === 'GBP') {
-          const gbxRate = getNearestGbpRate(day, true);
-          return amount * 100 / gbxRate;
-        }
-        return amount;
+        if (cur === 'GBX') return amount / 100 / ratePerEUR('GBP', day);
+        return amount / ratePerEUR(cur, day);
       };
 
-      const app5ByYear = {};
-      const app8ByYear = {};
-      const byTicker   = {};
+      const years  = {};
+      const Y      = y => years[y] = years[y] || { taxable: {}, dividends: [], holdings: [] };
+      const names  = {};
+      // Weighted-average cost per ticker, in EUR at the purchase-date rate. T212's own Result
+      // column is not used: it excludes the FX fees and, for sells paid out in USD/GBP, ignores
+      // the EUR/USD move since purchase.
+      const pos    = {}; // ticker -> { shares, eur, firstTime, isin }
+      const missingHistory = new Set();
+      let snapYear = null;
 
-      const ensure = (y, t) => {
-        app5ByYear[y] = app5ByYear[y] || {};
-        app5ByYear[y][t] = app5ByYear[y][t] || { sellEUR: 0, buyEUR: 0 };
-        app8ByYear[y] = app8ByYear[y] || [];
-      };
-
-      data.forEach(row => {
-        const act = row[idx('Action')]; if (act !== 'Market sell' && act !== 'Stop sell') return;
-        const ticker = row[idx('Ticker')]; if (!ticker) return;
-        const time   = row[idx('Time')] || '';
-        const day    = time.split(' ')[0];
-        const year   = new Date(time.replace(' ','T')).getFullYear();
-
-        const totalRaw  = parseFloat((row[idx('Total')]  || '0').replace(',','.')) || 0;
-        const totalCur  = (row[idx('Currency (Total)')] || row[idx('Currency (Price / share)')] || '').trim();
-        const resultRaw = parseFloat((row[idx('Result')] || '0').replace(',','.')) || 0;
-        const resultCur = (row[idx('Currency (Result)')] || totalCur).trim();
-        const exRate    = parseFloat((row[idx('Exchange rate')] || '1').replace(',','.')) || 1;
-
-        const sellEUR   = toEUR(totalRaw,  totalCur,  exRate, day);
-        const resultEUR = toEUR(resultRaw, resultCur, exRate, day);
-        const buyEUR    = sellEUR - resultEUR;
-
-        ensure(year, ticker);
-        app5ByYear[year][ticker].sellEUR += sellEUR;
-        app5ByYear[year][ticker].buyEUR  += buyEUR;
-
-        if (!byTicker[ticker]) byTicker[ticker] = { name: row[idx('Name')] || ticker };
-      });
-
-      const holdingsTracker = {};
-      const tradeRows = data.filter(r => {
-        const a = r[idx('Action')];
-        return a === 'Market buy' || a === 'Market sell' || a === 'Stop sell';
-      });
-
-      let curSnapYear = null;
-      const snapshots = {};
-
-      const takeSnapshot = (year) => {
-        snapshots[year] = {};
-        Object.entries(holdingsTracker).forEach(([ticker, obj]) => {
-          let sh = 0, eur = 0, first = '';
-          obj.queue.forEach((b, i) => {
-            sh  += b.rem;
-            eur += b.unitEUR * b.rem;
-            if (i === 0) first = b.time;
+      const snapshot = y => {
+        Object.entries(pos).forEach(([ticker, p]) => {
+          if (p.shares < 1e-6) return;
+          Y(y).holdings.push({
+            ticker, name: names[ticker], isin: p.isin, shares: p.shares, firstDate: p.firstTime, totalEUR: p.eur
           });
-          if (sh > 1e-4) {
-            snapshots[year][ticker] = { name: obj.name, shares: sh, totalEUR: eur, firstDate: first };
-          }
         });
       };
 
-      tradeRows.forEach(row => {
-        const action = row[idx('Action')];
-        const ticker = row[idx('Ticker')]; if (!ticker) return;
-        const time   = row[idx('Time')] || '';
-        const day    = time.split(' ')[0];
-        const year   = new Date(time.replace(' ','T')).getFullYear();
+      data.forEach(r => {
+        const y = yearOf(r); if (!y) return;
+        const isBuy = BUY_ACTIONS.has(r.Action), isSell = SELL_ACTIONS.has(r.Action);
+        const ticker = r.Ticker, day = dayOf(r);
+        const acc = r['Currency (Total)'];
+        const total = num(r.Total), shares = num(r['No. of shares']);
+        if (ticker) names[ticker] = names[ticker] || r.Name || ticker;
 
-        if (curSnapYear !== null && year > curSnapYear) {
-          for (let y = curSnapYear; y < year; y++) takeSnapshot(y);
-        }
-        curSnapYear = year;
-
-        const totalRaw = parseFloat((row[idx('Total')]  || '0').replace(',','.')) || 0;
-        const totalCur = (row[idx('Currency (Total)')] || row[idx('Currency (Price / share)')] || '').trim();
-        const exRate   = parseFloat((row[idx('Exchange rate')] || '1').replace(',','.')) || 1;
-        const shares   = parseFloat((row[idx('No. of shares')] || '0').replace(',','.')) || 0;
-        const totalEUR = toEUR(totalRaw, totalCur, exRate, day);
-
-        if (!holdingsTracker[ticker]) holdingsTracker[ticker] = { name: row[idx('Name')] || ticker, queue: [] };
-
-        if (action === 'Market buy') {
-          holdingsTracker[ticker].queue.push({
-            rem: shares, unitEUR: shares ? totalEUR / shares : 0, time
+        if ((r.Action || '').startsWith('Dividend')) {
+          // T212 "Total" is the gross dividend; withholding tax is reported separately
+          Y(y).dividends.push({
+            ticker, name: r.Name, isin: r.ISIN, day,
+            grossEUR: toEUR(total, acc, day),
+            whtEUR: toEUR(num(r['Withholding tax']), r['Currency (Withholding tax)'], day)
           });
+          return;
+        }
+        if (!ticker || (!isBuy && !isSell)) return;
+
+        if (snapYear !== null && y > snapYear) for (let s = snapYear; s < y; s++) snapshot(s);
+        snapYear = y;
+
+        const p = pos[ticker] = pos[ticker] || { shares: 0, eur: 0, firstTime: '', isin: r.ISIN };
+
+        // Buy Total includes the FX fee, sell Total is net of it — so fees reduce the gain
+        if (isBuy) {
+          if (p.shares < 1e-6) p.firstTime = r[TIME];
+          p.shares += shares;
+          p.eur += toEUR(total, acc, day);
+          return;
+        }
+
+        const sellEUR = toEUR(total, acc, day);
+        let costEUR;
+        if (p.shares + 1e-6 >= shares) {
+          costEUR = p.eur * Math.min(shares / p.shares, 1);
+          p.eur -= costEUR; p.shares -= shares;
         } else {
-          let rem = shares;
-          const q = holdingsTracker[ticker].queue;
-          while (rem > 1e-4 && q.length > 0) {
-            const b = q[0];
-            const used = Math.min(b.rem, rem);
-            b.rem -= used; rem -= used;
-            if (b.rem < 1e-4) q.shift();
-          }
+          // Bought before the first uploaded CSV — fall back to T212's Result
+          missingHistory.add(ticker);
+          costEUR = sellEUR - toEUR(num(r.Result), r['Currency (Result)'] || acc, day);
+          p.eur = 0; p.shares = 0;
         }
+        if (p.shares < 1e-6) { p.shares = 0; p.eur = 0; }
+
+        const profit = sellEUR - costEUR;
+        const bucket = Y(y).taxable;
+        const t = bucket[ticker] = bucket[ticker] || { sellEUR: 0, buyEUR: 0, profit: 0, loss: 0, deals: 0 };
+        t.sellEUR += sellEUR; t.buyEUR += costEUR; t.deals++;
+        if (profit >= 0) t.profit += profit; else t.loss -= profit;
       });
+      if (snapYear !== null) snapshot(snapYear);
 
-      if (curSnapYear !== null) takeSnapshot(curSnapYear);
+      const sumDeals = b => Object.values(b).reduce((s, t) => ({
+        sell: s.sell + t.sellEUR, buy: s.buy + t.buyEUR, profit: s.profit + t.profit, loss: s.loss + t.loss
+      }), { sell: 0, buy: 0, profit: 0, loss: 0 });
+      const lastDay  = data.length ? dayOf(data[data.length - 1]) : '';
+      const fmtDate  = d => d ? d.slice(0, 10).split('-').reverse().join('.') : '—';
+      const country  = isin => (isin || '').slice(0, 2) || '—';
+      const yearList = Object.keys(years).map(Number).sort((a, b) => a - b);
 
-      const lastDateInFile = tradeRows.length
-        ? new Date(tradeRows[tradeRows.length-1][idx('Time')].replace(' ','T'))
-        : new Date();
-      const lastDateStr = lastDateInFile.toLocaleDateString('bg-BG');
-
-      Object.entries(snapshots).forEach(([yearStr, tickers]) => {
-        const y = parseInt(yearStr);
-        app8ByYear[y] = app8ByYear[y] || [];
-        Object.entries(tickers).forEach(([ticker, d]) => {
-          app8ByYear[y].push({
-            ticker, name: d.name, shares: d.shares, firstDate: d.firstDate,
-            totalEUR: d.totalEUR
-          });
-        });
+      const summary = {};
+      yearList.forEach(y => {
+        const tx = sumDeals(years[y].taxable);
+        const netTaxable = tx.profit - tx.loss;
+        const dealsTax = Math.max(netTaxable, 0) * 0.10;
+        const divTax = years[y].dividends.reduce((s, d) => s + Math.max(d.grossEUR * 0.05 - d.whtEUR, 0), 0);
+        summary[y] = { tx, netTaxable, dealsTax, divTax, partial: lastDay < `${y}-12-31` };
       });
+      window.taxSummary = summary; // handy for checking numbers in the console
 
-      const years = Array.from(new Set([
-        ...Object.keys(app5ByYear),
-        ...Object.keys(app8ByYear)
-      ])).map(Number).sort();
-
-      let totalSellEUR = 0, totalBuyEUR = 0, totalHoldingsEUR = 0;
-      years.forEach(y => {
-        Object.values(app5ByYear[y] || {}).forEach(t => {
-          totalSellEUR += t.sellEUR;
-          totalBuyEUR  += t.buyEUR;
-        });
-        (app8ByYear[y] || []).forEach(h => { totalHoldingsEUR += h.totalEUR; });
-      });
-      const netProfitEUR = totalSellEUR - totalBuyEUR;
-
-      const latestYear = years[years.length - 1] || new Date().getFullYear();
-      let yearSell = 0, yearBuy = 0;
-      Object.values(app5ByYear[latestYear] || {}).forEach(t => {
-        yearSell += t.sellEUR; yearBuy += t.buyEUR;
-      });
-      const yearProfit = yearSell - yearBuy;
-
-      summaryCards.innerHTML = [
-        { label: `Нетна печалба ${latestYear}`, val: eur(yearProfit), cls: yearProfit >= 0 ? 'pos' : 'neg' },
-        { label: `Продажни цени ${latestYear}`, val: eur(yearSell), cls: 'neu' },
-        { label: `Покупни цени ${latestYear}`,  val: eur(yearBuy),  cls: 'neu' },
-        { label: 'Данък 10% (прибл.)', val: eur(Math.max(yearProfit, 0) * 0.1), cls: yearProfit > 0 ? 'pos' : 'zero-val' },
-      ].map(c => `
+      summaryCards.innerHTML = yearList.map(y => {
+        const s = summary[y];
+        return `
         <div class="card">
-          <div class="card-label">${c.label}</div>
-          <div class="card-value ${c.cls}">${c.val}</div>
-        </div>`).join('');
+          <div class="card-label">Данък за ${y}${s.partial ? ` (до ${fmtDate(lastDay)})` : ''}</div>
+          <div class="card-value ${s.dealsTax + s.divTax > 0 ? 'neg' : 'zero-val'}">${eur(s.dealsTax + s.divTax)}</div>
+          <div class="card-sub">Сделки 10%: ${eur(s.dealsTax)} · Дивиденти 5%: ${eur(s.divTax)}</div>
+        </div>`;
+      }).join('');
 
-      let html = '';
-      if (conversionWarnings.length > 0) {
-        html += `<div class="warn">⚠️ ${conversionWarnings.length} USD транзакции нямат exchange rate в CSV — използван е най-близкият наличен курс по дата.</div>`;
-      }
-
-      years.forEach(y => {
-        html += `<div class="year-block"><div class="year-header">${y}</div>`;
-
-        // Приложение 8
-        const holdings = app8ByYear[y] || [];
-        html += `
-          <div class="section">
-            <div class="section-title">Приложение 8 — Акции към ${lastDateStr} <span class="section-badge">чл. 8</span></div>
-            ${holdings.length === 0 ? '<p class="empty-text">Няма налични позиции в края на годината.</p>' : `
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th class="left">#</th>
-                    <th class="left">Вид</th>
-                    <th class="left">Емитент / Тикер</th>
-                    <th>Брой акции</th>
-                    <th>Дата на придобиване</th>
-                    <th>Обща цена EUR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${holdings.map((s, i) => {
-                    const fd = s.firstDate ? s.firstDate.split(' ')[0].split('-').reverse().join('.') : '—';
-                    return `<tr>
-                      <td class="left">${i + 1}</td>
-                      <td class="left">Акции</td>
-                      <td class="ticker">${s.ticker}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${s.name}</span></td>
-                      <td>${s.shares.toFixed(8)}</td>
-                      <td>${fd}</td>
-                      <td>${eur(s.totalEUR)}</td>
-                    </tr>`;
-                  }).join('')}
-                  <tr class="total-row">
-                    <td colspan="5" class="left">Общо</td>
-                    <td>${eur(holdings.reduce((s, h) => s + h.totalEUR, 0))}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>`}
-          </div>`;
-
-        // Приложение 5
-        const tickers5 = Object.entries(app5ByYear[y] || {});
-        let totSell = 0, totBuy = 0;
-        tickers5.forEach(([, t]) => { totSell += t.sellEUR; totBuy += t.buyEUR; });
-        const totProfit = Math.max(totSell - totBuy, 0);
-        const totLoss   = Math.max(totBuy - totSell, 0);
-
-        html += `
-          <div class="section">
-            <div class="section-title">Приложение 5 — Реализирани печалби и загуби <span class="section-badge">чл. 5</span></div>
-            ${tickers5.length === 0 ? '<p class="empty-text">Няма продадени позиции.</p>' : `
+      const dealsTable = (bucket, withTax, s) => {
+        const tot = sumDeals(bucket);
+        return `
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th class="left">#</th>
                     <th class="left">Код (Тикер)</th>
+                    <th>Сделки</th>
                     <th>Продажна цена EUR</th>
                     <th>Цена на придобиване EUR</th>
                     <th>Печалба EUR</th>
@@ -827,24 +701,123 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${tickers5.map(([tick, t], i) => {
-                    const profit = Math.max(t.sellEUR - t.buyEUR, 0);
-                    const loss   = Math.max(t.buyEUR - t.sellEUR, 0);
-                    return `<tr>
+                  ${Object.entries(bucket).map(([tick, t], i) => `<tr>
                       <td class="left">${i + 1}</td>
-                      <td class="ticker">${tick}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${(byTicker[tick]?.name || '')}</span></td>
+                      <td class="ticker">${tick}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${names[tick] || ''}</span></td>
+                      <td>${t.deals}</td>
                       <td>${eur(t.sellEUR)}</td>
                       <td>${eur(t.buyEUR)}</td>
-                      <td class="${profit > 0 ? 'profit-val' : 'zero-val'}">${profit > 0 ? eur(profit) : '—'}</td>
-                      <td class="${loss > 0 ? 'loss-val' : 'zero-val'}">${loss > 0 ? eur(loss) : '—'}</td>
-                    </tr>`;
-                  }).join('')}
+                      <td class="${t.profit > 0 ? 'profit-val' : 'zero-val'}">${t.profit > 0 ? eur(t.profit) : '—'}</td>
+                      <td class="${t.loss > 0 ? 'loss-val' : 'zero-val'}">${t.loss > 0 ? eur(t.loss) : '—'}</td>
+                    </tr>`).join('')}
                   <tr class="total-row">
-                    <td colspan="2" class="left">Общо</td>
-                    <td><strong>${eur(totSell)}</strong></td>
-                    <td><strong>${eur(totBuy)}</strong></td>
-                    <td class="${totProfit > 0 ? 'profit-val' : 'zero-val'}"><strong>${totProfit > 0 ? eur(totProfit) : '—'}</strong></td>
-                    <td class="${totLoss > 0 ? 'loss-val' : 'zero-val'}"><strong>${totLoss > 0 ? eur(totLoss) : '—'}</strong></td>
+                    <td colspan="3" class="left">Общо</td>
+                    <td><strong>${eur(tot.sell)}</strong></td>
+                    <td><strong>${eur(tot.buy)}</strong></td>
+                    <td class="profit-val"><strong>${eur(tot.profit)}</strong></td>
+                    <td class="loss-val"><strong>${eur(tot.loss)}</strong></td>
+                  </tr>
+                  ${withTax ? `
+                  <tr class="total-row">
+                    <td colspan="6" class="left">Облагаем доход (печалби − загуби)</td>
+                    <td><strong>${eur(Math.max(s.netTaxable, 0))}</strong></td>
+                  </tr>
+                  <tr class="total-row">
+                    <td colspan="6" class="left">Данък 10%</td>
+                    <td><strong>${eur(s.dealsTax)}</strong></td>
+                  </tr>` : ''}
+                </tbody>
+              </table>
+            </div>`;
+      };
+
+      let html = `<div class="warn">ℹ️ Курсовете са на Trading 212 — НАП изисква курса на БНБ към датата на сделката, разликите обикновено са минимални.</div>`;
+      if (missingHistory.size) {
+        html += `<div class="warn">⚠️ Липсват покупки за: ${[...missingHistory].join(", ")} — качете и по-старите CSV файлове. За тези продажби е използван Result от Trading 212.</div>`;
+      }
+      if (missingRates.size) {
+        html += `<div class="warn">⚠️ Няма курс в CSV за: ${[...missingRates].join(', ')} — използван е приблизителен курс.</div>`;
+      }
+
+      yearList.forEach(y => {
+        const s = summary[y];
+        const yd = years[y];
+        const asOf = s.partial ? fmtDate(lastDay) : `31.12.${y}`;
+        html += `<div class="year-block"><div class="year-header">${y}${s.partial ? ' — непълна година' : ''}</div>`;
+
+        // Приложение 5, Таблица 2 — облагаеми
+        html += `
+          <div class="section">
+            <div class="section-title">Приложение 5, Таблица 2 — Облагаеми сделки (код 508) <span class="section-badge">10%</span></div>
+            ${Object.keys(yd.taxable).length ? dealsTable(yd.taxable, true, s) : '<p class="empty-text">Няма облагаеми продажби.</p>'}
+          </div>`;
+
+        // Дивиденти
+        if (yd.dividends.length) {
+          html += `
+          <div class="section">
+            <div class="section-title">Приложение 8 — Дивиденти от чужбина <span class="section-badge">5%</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="left">Дата</th>
+                    <th class="left">Тикер</th>
+                    <th class="left">Държава</th>
+                    <th>Брутен дивидент EUR</th>
+                    <th>Удържан данък EUR</th>
+                    <th>Дължим данък EUR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${yd.dividends.map(d => `<tr>
+                      <td class="left">${fmtDate(d.day)}</td>
+                      <td class="ticker">${d.ticker}</td>
+                      <td class="left">${country(d.isin)}</td>
+                      <td>${eur(d.grossEUR)}</td>
+                      <td>${eur(d.whtEUR)}</td>
+                      <td>${eur(Math.max(d.grossEUR * 0.05 - d.whtEUR, 0))}</td>
+                    </tr>`).join('')}
+                  <tr class="total-row">
+                    <td colspan="5" class="left">Общо данък 5%</td>
+                    <td><strong>${eur(s.divTax)}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+        }
+
+        // Приложение 8, Част I — притежавани акции
+        const holdings = yd.holdings;
+        html += `
+          <div class="section">
+            <div class="section-title">Приложение 8, Част I — Акции към ${asOf} <span class="section-badge">чл. 8</span></div>
+            ${holdings.length === 0 ? '<p class="empty-text">Няма налични позиции в края на годината.</p>' : `
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="left">#</th>
+                    <th class="left">Емитент / Тикер</th>
+                    <th class="left">Държава</th>
+                    <th>Брой акции</th>
+                    <th>Дата на придобиване</th>
+                    <th>Обща цена EUR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${holdings.map((h, i) => `<tr>
+                      <td class="left">${i + 1}</td>
+                      <td class="ticker">${h.ticker}<br><span style="color:var(--text3);font-size:0.6875rem;font-weight:400">${h.name}</span></td>
+                      <td class="left">${country(h.isin)}</td>
+                      <td>${h.shares.toFixed(8)}</td>
+                      <td>${fmtDate(h.firstDate)}</td>
+                      <td>${eur(h.totalEUR)}</td>
+                    </tr>`).join('')}
+                  <tr class="total-row">
+                    <td colspan="5" class="left">Общо</td>
+                    <td>${eur(holdings.reduce((t, h) => t + h.totalEUR, 0))}</td>
                   </tr>
                 </tbody>
               </table>
@@ -856,7 +829,7 @@
 
       taxOutput.innerHTML = html;
       results.style.display = 'block';
-      setupCsvTable(header, data);
+      setupCsvTable(header, data.map(o => header.map(h => o[h] ?? '')));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -880,7 +853,7 @@
       const actionIdx  = csvHeader.indexOf('Action');
       let filtered = csvData.filter(row => {
         const action = row[actionIdx];
-        if (action !== 'Market buy' && action !== 'Market sell' && action !== 'Stop sell') return false;
+        if (!BUY_ACTIONS.has(action) && !SELL_ACTIONS.has(action)) return false;
         if (actFilter && action !== actFilter) return false;
         if (search) return row.some(c => c.toLowerCase().includes(search));
         return true;
@@ -906,7 +879,7 @@
         `<th class="${i <= 4 ? 'left' : ''}" onclick="sortBy(${i})">${h} ${sortCol === i ? (sortDir === 'asc' ? '↑' : '↓') : ''}</th>`
       ).join('') + '</tr>';
       tbody.innerHTML = filtered.map(row =>
-        `<tr class="${row[actionIdx] === 'Market sell' ? 'highlight' : ''}">` +
+        `<tr class="${SELL_ACTIONS.has(row[actionIdx]) ? 'highlight' : ''}">` +
         row.map((c, i) => `<td class="${i <= 4 ? 'left' : ''}">${c}</td>`).join('') + '</tr>'
       ).join('');
       document.getElementById('rowCount').textContent =
