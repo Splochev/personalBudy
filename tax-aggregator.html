@@ -372,6 +372,46 @@
         to   { opacity: 1; transform: none; }
       }
       #results { animation: fadeIn 0.25s ease; }
+
+      /* ── NAP FILL-IN BLOCK ───────────────────────────────────────────── */
+      .nap {
+        background: var(--surface);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        border-radius: var(--radius);
+        padding: 18px 18px 6px;
+        margin-bottom: 32px;
+        box-shadow: var(--shadow);
+      }
+      .nap-head { font-size: 0.9375rem; font-weight: 700; color: var(--text); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .nap-head strong { color: var(--accent); }
+      .nap-partial {
+        font-size: 0.6875rem; font-weight: 600; color: var(--yellow);
+        background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.25);
+        padding: 2px 8px; border-radius: 10px;
+      }
+      .nap-hint { font-size: 0.75rem; color: var(--text3); margin: 4px 0 6px; }
+      .nap-title { font-size: 0.8125rem; font-weight: 700; color: var(--text2); margin: 18px 0 8px; }
+      .nap-note { font-size: 0.75rem; color: var(--text3); margin: 8px 0 4px; }
+      .nap-note strong { color: var(--text); }
+      .nap-table thead th {
+        background: #16324f; color: #fff; text-transform: none; letter-spacing: 0;
+        font-size: 0.6875rem; text-align: center; white-space: normal; cursor: default;
+        border: 1px solid var(--border);
+      }
+      .nap-table thead tr.nap-colnum th { background: var(--surface2); color: var(--text3); font-weight: 700; padding: 4px; }
+      .nap-table tbody td { border: 1px solid var(--border); font-size: 0.8125rem; }
+      .nap-table tbody td.c { text-align: center; }
+      .nap-table tr.nap-calc td, .nap-table td.nap-calc-cell { background: rgba(251, 191, 36, 0.06); color: var(--text); }
+      .nap-val {
+        display: inline-block; min-width: 64px; text-align: right;
+        background: var(--bg); color: #fff; border: 1px solid var(--accent);
+        border-radius: 4px; padding: 2px 8px; font-weight: 700; cursor: copy;
+        font-variant-numeric: tabular-nums; transition: var(--trans);
+      }
+      .nap-table td.left .nap-val, .nap-table td.c .nap-val { text-align: left; min-width: 0; }
+      .nap-val:hover { background: var(--accent-bg); }
+      .nap-val.copied { background: var(--accent); color: #fff; }
+      .nap-sub { font-size: 0.6875rem; color: var(--text3); font-weight: 400; }
     </style>
   </head>
   <body>
@@ -584,13 +624,24 @@
         return amount / ratePerEUR(cur, day);
       };
 
+      // Amount in the instrument's price currency (GBX → GBP), using the trade's own exchange rate
+      const toPriceCurrency = (total, acc, r, day) => {
+        let cur = r['Currency (Price / share)'] || acc;
+        let rate = num(r['Exchange rate']);
+        if (cur === 'GBX') { cur = 'GBP'; rate /= 100; }
+        if (cur === acc) return [total, cur];
+        if (rate > 0) return [total * rate, cur];
+        const e = toEUR(total, acc, day);
+        return [cur === 'EUR' ? e : cur === 'BGN' ? e * EURO_TO_BGN : e * ratePerEUR(cur, day), cur];
+      };
+
       const years  = {};
       const Y      = y => years[y] = years[y] || { taxable: {}, dividends: [], holdings: [] };
       const names  = {};
       // Weighted-average cost per ticker, in EUR at the purchase-date rate. T212's own Result
       // column is not used: it excludes the FX fees and, for sells paid out in USD/GBP, ignores
       // the EUR/USD move since purchase.
-      const pos    = {}; // ticker -> { shares, eur, firstTime, isin }
+      const pos    = {}; // ticker -> { shares, eur, foreign, fcur, firstTime, isin }
       const missingHistory = new Set();
       let snapYear = null;
 
@@ -598,7 +649,8 @@
         Object.entries(pos).forEach(([ticker, p]) => {
           if (p.shares < 1e-6) return;
           Y(y).holdings.push({
-            ticker, name: names[ticker], isin: p.isin, shares: p.shares, firstDate: p.firstTime, totalEUR: p.eur
+            ticker, name: names[ticker], isin: p.isin, shares: p.shares, firstDate: p.firstTime,
+            totalEUR: p.eur, foreign: p.foreign, fcur: p.fcur
           });
         });
       };
@@ -625,28 +677,31 @@
         if (snapYear !== null && y > snapYear) for (let s = snapYear; s < y; s++) snapshot(s);
         snapYear = y;
 
-        const p = pos[ticker] = pos[ticker] || { shares: 0, eur: 0, firstTime: '', isin: r.ISIN };
+        const p = pos[ticker] = pos[ticker] || { shares: 0, eur: 0, foreign: 0, fcur: '', firstTime: '', isin: r.ISIN };
 
         // Buy Total includes the FX fee, sell Total is net of it — so fees reduce the gain
         if (isBuy) {
           if (p.shares < 1e-6) p.firstTime = r[TIME];
+          const [amt, fcur] = toPriceCurrency(total, acc, r, day);
           p.shares += shares;
           p.eur += toEUR(total, acc, day);
+          p.foreign += amt; p.fcur = fcur;
           return;
         }
 
         const sellEUR = toEUR(total, acc, day);
         let costEUR;
         if (p.shares + 1e-6 >= shares) {
-          costEUR = p.eur * Math.min(shares / p.shares, 1);
-          p.eur -= costEUR; p.shares -= shares;
+          const frac = Math.min(shares / p.shares, 1);
+          costEUR = p.eur * frac;
+          p.eur -= costEUR; p.foreign -= p.foreign * frac; p.shares -= shares;
         } else {
           // Bought before the first uploaded CSV — fall back to T212's Result
           missingHistory.add(ticker);
           costEUR = sellEUR - toEUR(num(r.Result), r['Currency (Result)'] || acc, day);
-          p.eur = 0; p.shares = 0;
+          p.eur = 0; p.foreign = 0; p.shares = 0;
         }
-        if (p.shares < 1e-6) { p.shares = 0; p.eur = 0; }
+        if (p.shares < 1e-6) { p.shares = 0; p.eur = 0; p.foreign = 0; }
 
         const profit = sellEUR - costEUR;
         const bucket = Y(y).taxable;
@@ -664,28 +719,63 @@
       const country  = isin => (isin || '').slice(0, 2) || '—';
       const yearList = Object.keys(years).map(Number).sort((a, b) => a - b);
 
+      // Everything below is in the return's currency (BGN up to 2025, EUR from 2026),
+      // rounded to stotinki/cents the way the NAP portal computes each row.
+      const r2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
       const summary = {};
       yearList.forEach(y => {
-        const tx = sumDeals(years[y].taxable);
-        const netTaxable = tx.profit - tx.loss;
-        const dealsTax = Math.max(netTaxable, 0) * 0.10;
-        const divTax = years[y].dividends.reduce((s, d) => s + Math.max(d.grossEUR * 0.05 - d.whtEUR, 0), 0);
-        summary[y] = { tx, netTaxable, dealsTax, divTax, partial: lastDay < `${y}-12-31` };
+        const yd = years[y];
+        const conv = v => currencyOf(y) === 'BGN' ? v * EURO_TO_BGN : v;
+        const tx = sumDeals(yd.taxable);
+        // Приложение 5, Таблица 2: к. 3–6, ред 5 = печалби − загуби, ред 6 = 10% разходи, ред 7 = облагаем доход
+        const c3 = r2(conv(tx.sell)), c4 = r2(conv(tx.buy)), c5 = r2(conv(tx.profit)), c6 = r2(conv(tx.loss));
+        const row5 = r2(Math.max(c5 - c6, 0));
+        const row6 = r2(row5 * 0.10);
+        const row7 = r2(row5 - row6);
+        const dealsTax = r2(row7 * 0.10);
+
+        // Приложение 8, Част III — one row per payer
+        const payers = {};
+        yd.dividends.forEach(d => {
+          const k = d.ticker || d.name;
+          const pr = payers[k] = payers[k] || { name: d.name || d.ticker, isin: d.isin, grossEUR: 0, whtEUR: 0 };
+          pr.grossEUR += d.grossEUR; pr.whtEUR += d.whtEUR;
+        });
+        const divRows = Object.values(payers).map(pr => {
+          const gross = r2(conv(pr.grossEUR)), wht = r2(conv(pr.whtEUR));
+          const allowed = r2(Math.min(wht, gross * 0.05));
+          return { ...pr, gross, wht, allowed, due: r2(Math.max(gross * 0.05 - allowed, 0)) };
+        });
+        const divTax = r2(divRows.reduce((t, d) => t + d.due, 0));
+
+        // Приложение 8, Част I — one row per country and currency
+        const groups = {};
+        yd.holdings.forEach(h => {
+          const k = countryName(h.isin) + '|' + h.fcur;
+          const g = groups[k] = groups[k] || { country: countryName(h.isin), fcur: h.fcur, shares: 0, foreign: 0, eur: 0, first: h.firstDate, tickers: [] };
+          g.shares += h.shares; g.foreign += h.foreign; g.eur += h.totalEUR;
+          if (h.firstDate < g.first) g.first = h.firstDate;
+          g.tickers.push(h.ticker);
+        });
+        const holdRows = Object.values(groups).map(g => ({ ...g, foreign: r2(g.foreign), local: r2(conv(g.eur)) }));
+
+        summary[y] = { tx, c3, c4, c5, c6, row5, row6, row7, dealsTax, divRows, divTax, holdRows,
+          hasDeals: Object.keys(yd.taxable).length > 0, partial: lastDay < `${y}-12-31` };
       });
       window.taxSummary = summary; // handy for checking numbers in the console
 
       summaryCards.innerHTML = yearList.map(y => {
         const s = summary[y];
-        const m = v => money(v, y);
+        const a = v => amount(v, y);
         return `
         <div class="card">
           <div class="card-label">Данък за ${y}${s.partial ? ` (до ${fmtDate(lastDay)})` : ''}</div>
-          <div class="card-value ${s.dealsTax + s.divTax > 0 ? 'neg' : 'zero-val'}">${m(s.dealsTax + s.divTax)}</div>
-          <div class="card-sub">Сделки 10%: ${m(s.dealsTax)} · Дивиденти 5%: ${m(s.divTax)}</div>
+          <div class="card-value ${s.dealsTax + s.divTax > 0 ? 'neg' : 'zero-val'}">${a(s.dealsTax + s.divTax)}</div>
+          <div class="card-sub">Сделки 10% от ред 7: ${a(s.dealsTax)} · Дивиденти 5%: ${a(s.divTax)}</div>
         </div>`;
       }).join('');
 
-      const dealsTable = (bucket, withTax, s, y) => {
+      const dealsTable = (bucket, y) => {
         const tot = sumDeals(bucket);
         const m = v => money(v, y), cur = currencyOf(y);
         return `
@@ -719,15 +809,6 @@
                     <td class="profit-val"><strong>${m(tot.profit)}</strong></td>
                     <td class="loss-val"><strong>${m(tot.loss)}</strong></td>
                   </tr>
-                  ${withTax ? `
-                  <tr class="total-row">
-                    <td colspan="6" class="left">Облагаем доход (печалби − загуби)</td>
-                    <td><strong>${m(Math.max(s.netTaxable, 0))}</strong></td>
-                  </tr>
-                  <tr class="total-row">
-                    <td colspan="6" class="left">Данък 10%</td>
-                    <td><strong>${m(s.dealsTax)}</strong></td>
-                  </tr>` : ''}
                 </tbody>
               </table>
             </div>`;
@@ -747,19 +828,20 @@
         const m = v => money(v, y), cur = currencyOf(y);
         const asOf = s.partial ? fmtDate(lastDay) : `31.12.${y}`;
         html += `<div class="year-block"><div class="year-header">${y}${s.partial ? ' — непълна година' : ''}</div>`;
+        html += napBlock(y, s, asOf, fmtDate);
 
         // Приложение 5, Таблица 2 — облагаеми
         html += `
           <div class="section">
-            <div class="section-title">Приложение 5, Таблица 2 — Облагаеми сделки (код 508) <span class="section-badge">10%</span></div>
-            ${Object.keys(yd.taxable).length ? dealsTable(yd.taxable, true, s, y) : '<p class="empty-text">Няма облагаеми продажби.</p>'}
+            <div class="section-title">Разбивка по тикери — продажби <span class="section-badge">детайли</span></div>
+            ${Object.keys(yd.taxable).length ? dealsTable(yd.taxable, y) : '<p class="empty-text">Няма облагаеми продажби.</p>'}
           </div>`;
 
         // Дивиденти
         if (yd.dividends.length) {
           html += `
           <div class="section">
-            <div class="section-title">Приложение 8 — Дивиденти от чужбина <span class="section-badge">5%</span></div>
+            <div class="section-title">Разбивка — дивиденти <span class="section-badge">детайли</span></div>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -783,7 +865,7 @@
                     </tr>`).join('')}
                   <tr class="total-row">
                     <td colspan="5" class="left">Общо данък 5%</td>
-                    <td><strong>${m(s.divTax)}</strong></td>
+                    <td><strong>${amount(s.divTax, y)}</strong></td>
                   </tr>
                 </tbody>
               </table>
@@ -795,7 +877,7 @@
         const holdings = yd.holdings;
         html += `
           <div class="section">
-            <div class="section-title">Приложение 8, Част I — Акции към ${asOf} <span class="section-badge">чл. 8</span></div>
+            <div class="section-title">Разбивка — акции към ${asOf} <span class="section-badge">детайли</span></div>
             ${holdings.length === 0 ? '<p class="empty-text">Няма налични позиции в края на годината.</p>' : `
             <div class="table-wrap">
               <table>
@@ -848,6 +930,143 @@
       const v = vEUR * EURO_TO_BGN;
       return (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2) + ' лв.';
     }
+    // Formats an amount that is already in the return's currency
+    function amount(v, y) {
+      return (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2) + (currencyOf(y) === 'EUR' ? ' €' : ' лв.');
+    }
+
+    const COUNTRIES = {
+      US: 'САЩ', IE: 'Ирландия', FR: 'Франция', NL: 'Нидерландия', DE: 'Германия', GB: 'Обединено кралство',
+      JE: 'Джърси', LU: 'Люксембург', CA: 'Канада', KY: 'Каймански острови', IL: 'Израел', CH: 'Швейцария',
+      TW: 'Тайван', KR: 'Южна Корея', FI: 'Финландия', SE: 'Швеция', DK: 'Дания', NO: 'Норвегия', IT: 'Италия',
+      ES: 'Испания', BE: 'Белгия', AT: 'Австрия', PT: 'Португалия', AU: 'Австралия', JP: 'Япония', CN: 'Китай',
+      HK: 'Хонконг', BM: 'Бермуди', SG: 'Сингапур', BR: 'Бразилия', IN: 'Индия', MX: 'Мексико', PL: 'Полша'
+    };
+    const countryName = isin => COUNTRIES[(isin || '').slice(0, 2)] || (isin || '').slice(0, 2) || '—';
+
+    // A value the user types into the NAP portal; click copies it
+    const napVal = v => `<span class="nap-val" data-v="${v}" title="Копирай">${v}</span>`;
+    const fmtNum = v => v.toFixed(2);
+
+    // "What to type into the NAP portal" — mirrors the layout of the portal's own tables
+    function napBlock(y, s, asOf, fmtDate) {
+      const cur = currencyOf(y);
+      const curWord = cur === 'BGN' ? 'лева' : 'евро';
+      const n = v => napVal(fmtNum(v));
+      let out = `
+        <div class="nap">
+          <div class="nap-head">
+            Какво да попълните в декларацията за ${y} — всички суми са в <strong>${curWord}</strong>
+            ${s.partial ? `<span class="nap-partial">годината не е приключила — данни до ${asOf}</span>` : ''}
+          </div>
+          <div class="nap-hint">Кликнете върху стойност, за да я копирате.</div>
+
+          <div class="nap-title">Приложение № 5 — Таблица 2</div>
+          ${!s.hasDeals ? '<p class="empty-text">Няма продажби — Приложение 5 не е нужно за тази година.</p>' : `
+          <div class="table-wrap">
+            <table class="nap-table">
+              <thead>
+                <tr><th>№</th><th>Код</th><th>Общ размер на продажните цени</th><th>Общ размер на цените на придобиване</th><th>Реализирани печалби</th><th>Реализирани загуби</th></tr>
+                <tr class="nap-colnum"><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="c">1.1</td><td class="c">${napVal('508')}</td><td>${n(s.c3)}</td><td>${n(s.c4)}</td><td>${n(s.c5)}</td><td>${n(s.c6)}</td></tr>
+                <tr class="nap-calc"><td class="c">4</td><td colspan="3" class="left">Обща сума за годината</td><td>${fmtNum(s.c5)}</td><td>${fmtNum(s.c6)}</td></tr>
+                <tr class="nap-calc"><td class="c">5</td><td colspan="3" class="left">Разлика между к. 5 и к. 6 (ако е отрицателна — нула)</td><td colspan="2">${fmtNum(s.row5)}</td></tr>
+                <tr class="nap-calc"><td class="c">6</td><td colspan="3" class="left">Разходи за дейността (10% от ред 5)</td><td colspan="2">${fmtNum(s.row6)}</td></tr>
+                <tr class="nap-calc"><td class="c">7</td><td colspan="3" class="left"><strong>Облагаем доход по Таблица 2</strong> (ред 5 − ред 6)</td><td colspan="2"><strong>${fmtNum(s.row7)}</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="nap-note">Попълвате само ред 1.1. Редове 4–7 порталът изчислява сам — проверете, че съвпадат.</div>
+
+          <div class="nap-title">Приложение № 5 — Част II</div>
+          <div class="table-wrap">
+            <table class="nap-table">
+              <tbody>
+                <tr class="nap-calc"><td class="c">1</td><td class="left">Облагаем доход (ред 7 на Таблица 2)</td><td>${fmtNum(s.row7)}</td></tr>
+                <tr><td class="c">2</td><td class="left">Осигурителни вноски по чл. 40, ал. 5 от ЗЗО, внесени авансово</td><td>${n(0)}</td></tr>
+                <tr><td class="c">3</td><td class="left">Окончателни осигурителни вноски по чл. 40, ал. 5 от ЗЗО</td><td>${n(0)}</td></tr>
+                <tr class="nap-calc"><td class="c">4</td><td class="left"><strong>Годишна данъчна основа</strong> (ред 1 − ред 2 − ред 3)</td><td><strong>${fmtNum(s.row7)}</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="nap-note">
+            В Част IV на декларацията ред 4001 става годишната основа от Приложение 1 + <strong>${fmtNum(s.row7)}</strong>.
+            Данъкът от сделките е 10% от ред 7 ≈ <strong>${amount(s.dealsTax, y)}</strong>.
+          </div>`}`;
+
+      if (!s.holdRows.length && !s.divRows.length) {
+        out += `
+          <div class="nap-title">Приложение № 8</div>
+          <p class="empty-text">Не е нужно — към ${asOf} няма притежавани акции и няма получени дивиденти.</p>`;
+      }
+
+      if (s.holdRows.length) {
+        out += `
+          <div class="nap-title">Приложение № 8 — Част I (акции към ${asOf})</div>
+          <div class="table-wrap">
+            <table class="nap-table">
+              <thead>
+                <tr><th rowspan="2">Вид</th><th rowspan="2">Държава</th><th rowspan="2">Брой</th><th rowspan="2">Дата на придобиване</th><th colspan="2">Обща цена на придобиване</th></tr>
+                <tr><th>В съответната валута</th><th>В ${curWord}</th></tr>
+                <tr class="nap-colnum"><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+              </thead>
+              <tbody>
+                ${s.holdRows.map(g => `<tr>
+                  <td class="c">Акции</td>
+                  <td class="left">${napVal(g.country)}<div class="nap-sub">${g.tickers.join(', ')}</div></td>
+                  <td>${napVal(g.shares.toFixed(8).replace(/0+$/, '').replace(/\.$/, ''))}</td>
+                  <td class="c">${napVal(fmtDate(g.first))}</td>
+                  <td>${n(g.foreign)} <span class="nap-sub">${g.fcur}</span></td>
+                  <td>${n(g.local)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="nap-note">Датата е първата покупка на позицията, която все още държите.</div>`;
+      }
+
+      if (s.divRows.length) {
+        out += `
+          <div class="nap-title">Приложение № 8 — Част III (дивиденти)</div>
+          <div class="table-wrap">
+            <table class="nap-table">
+              <thead>
+                <tr><th>№</th><th>Наименование на платеца</th><th>Държава</th><th>Код вид доход</th><th>Код за метод</th><th>Брутен размер</th><th>Платен данък в чужбина</th><th>Допустим данъчен кредит</th><th>Признат данъчен кредит</th><th>Дължим данък</th></tr>
+                <tr class="nap-colnum"><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
+              </thead>
+              <tbody>
+                ${s.divRows.map((d, i) => `<tr>
+                  <td class="c">1.${i + 1}</td>
+                  <td class="left">${napVal(d.name)}</td>
+                  <td class="left">${napVal(countryName(d.isin))}</td>
+                  <td class="c">${napVal('8141')}</td>
+                  <td class="c">${napVal('1')}</td>
+                  <td>${n(d.gross)}</td>
+                  <td>${n(d.wht)}</td>
+                  <td class="nap-calc-cell">${fmtNum(d.allowed)}</td>
+                  <td class="nap-calc-cell">${fmtNum(d.allowed)}</td>
+                  <td class="nap-calc-cell">${fmtNum(d.due)}</td>
+                </tr>`).join('')}
+                <tr class="nap-calc"><td colspan="9" class="left">Обща сума на окончателния данък за дивиденти</td><td><strong>${fmtNum(s.divTax)}</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="nap-note">Колони 7 и 8 остават празни. Колони 10–12 порталът изчислява сам.</div>`;
+      }
+
+      return out + '</div>';
+    }
+
+    // Click-to-copy for NAP values
+    document.addEventListener('click', e => {
+      const el = e.target.closest('.nap-val');
+      if (!el) return;
+      try { navigator.clipboard.writeText(el.dataset.v); } catch (_) {}
+      el.classList.add('copied');
+      setTimeout(() => el.classList.remove('copied'), 900);
+    });
 
     // ── CSV Table ──────────────────────────────────────────────────────────
     let csvHeader = [], csvData = [], lastFiltered = [];
