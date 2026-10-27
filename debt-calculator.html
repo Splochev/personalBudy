@@ -94,6 +94,8 @@
   .debt-card{flex:1;min-width:0}
   .debt-card-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:12px}
   .debt-card .name{font-weight:700;font-size:0.9rem}
+  .debt-head-right{display:flex;align-items:center;gap:0}
+  .debt-remove{width:26px;height:26px;font-size:15px;margin-left:10px}
   .debt-estimate{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent);font-size:0.95rem}
   .debt-estimate-note{font-size:0.64rem;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-left:8px}
   .debt-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -297,13 +299,16 @@ const fbApp = initializeApp(sharedFirebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
 
-const DEBTS=[
-  {balance:7749.62,  asOf:'2026-09-15', pay:88.39,  rate:5.90, active:true},
-  {balance:29081.05, asOf:'2026-09-15', pay:197.26, rate:4.17, active:true},
-  {balance:63857.03, asOf:'2026-09-15', pay:271.78, rate:2.57, active:true},
-  {balance:81761.48, asOf:'2026-09-15', pay:368.69, rate:2.71, active:true},
+// only used to seed a first-ever load; once a state exists, the saved list is the source of truth
+const DEFAULT_DEBTS=[
+  {name:'Debt 1', balance:7749.62,  asOf:'2026-09-15', pay:88.39,  rate:5.90, active:true},
+  {name:'Debt 2', balance:29081.05, asOf:'2026-09-15', pay:197.26, rate:4.17, active:true},
+  {name:'Debt 3', balance:63857.03, asOf:'2026-09-15', pay:271.78, rate:2.57, active:true},
+  {name:'Debt 4', balance:81761.48, asOf:'2026-09-15', pay:368.69, rate:2.71, active:true},
 ];
+const DEBTS=DEFAULT_DEBTS.map(d=>({...d}));
 const RATES=[0,5,8,10,12];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LOCAL_KEY='personalbudy-debt-calculator';
 
 const eur=n=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' €';
@@ -372,7 +377,7 @@ const persist=debounce(async ()=>{
   const state={
     initial: parseFloat(document.getElementById('initial').value)||0,
     cash: parseFloat(document.getElementById('cash').value)||0,
-    debts: DEBTS.map(d=>({balance:d.balance, asOf:d.asOf, pay:d.pay, rate:d.rate, active:d.active})),
+    debts: DEBTS.map(d=>({name:d.name, balance:d.balance, asOf:d.asOf, pay:d.pay, rate:d.rate, active:d.active})),
     periods,
     updatedAt: Date.now(),
   };
@@ -407,8 +412,8 @@ function renderDebts(){
       <label class="chk"><input type="checkbox" data-i="${i}" ${d.active?'checked':''}></label>
       <div class="debt-card">
         <div class="debt-card-head">
-          <span class="name">Debt ${i+1}</span>
-          <span><span class="debt-estimate" id="debt-estimate-${i}">${eur(currentBalance(d))}</span><span class="debt-estimate-note">today's estimate</span></span>
+          <span class="name">${esc(d.name)}</span>
+          <span class="debt-head-right"><span class="debt-estimate" id="debt-estimate-${i}">${eur(currentBalance(d))}</span><span class="debt-estimate-note">today's estimate</span><button class="del debt-remove" data-del="${i}" title="Remove (paid off)">×</button></span>
         </div>
         <div class="debt-fields">
           <div class="field"><label>Balance (€)</label><input type="number" min="0" step="0.01" value="${d.balance}" data-i="${i}" data-k="balance"></div>
@@ -421,6 +426,16 @@ function renderDebts(){
   debtsEl.querySelectorAll('.chk input').forEach(inp=>{
     inp.addEventListener('change',e=>{
       DEBTS[+e.target.dataset.i].active=e.target.checked;
+      renderDebts();
+      compute();
+      saveState();
+    });
+  });
+  debtsEl.querySelectorAll('.debt-remove').forEach(b=>{
+    b.addEventListener('click',e=>{
+      const i=+e.currentTarget.dataset.del;
+      if(!confirm(`Remove ${DEBTS[i].name}? Do this once it's paid off — it will be removed from your saved data too.`))return;
+      DEBTS.splice(i,1);
       renderDebts();
       compute();
       saveState();
@@ -640,7 +655,16 @@ async function boot(){
   const saved=await loadState();
   if(saved){
     if(Array.isArray(saved.debts)){
-      saved.debts.forEach((sd,i)=>{ if(DEBTS[i])Object.assign(DEBTS[i],sd); });
+      // the saved list replaces the defaults outright — merging by index would resurrect removed debts
+      DEBTS.splice(0,DEBTS.length,...saved.debts.map((sd,i)=>({
+        // older saves had no name: recover it from the matching default (same monthly payment)
+        name: sd.name || DEFAULT_DEBTS.find(d=>d.pay===sd.pay)?.name || `Debt ${i+1}`,
+        balance: Number(sd.balance)||0,
+        asOf: typeof sd.asOf==='string' ? sd.asOf : '',
+        pay: Number(sd.pay)||0,
+        rate: Number(sd.rate)||0,
+        active: sd.active!==false,
+      })));
     } else if(Array.isArray(saved.debtsActive)){
       // legacy localStorage shape — only the active flags were ever stored
       DEBTS.forEach((d,i)=>{ if(typeof saved.debtsActive[i]==='boolean')d.active=saved.debtsActive[i]; });
